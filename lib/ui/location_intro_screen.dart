@@ -1,0 +1,195 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flowlink_mobile/services/location_service.dart';
+import 'package:flowlink_mobile/ui/app_theme.dart';
+
+class LocationIntroScreen extends StatefulWidget {
+  const LocationIntroScreen({super.key});
+
+  @override
+  State<LocationIntroScreen> createState() => _LocationIntroScreenState();
+}
+
+class _LocationIntroScreenState extends State<LocationIntroScreen> {
+  final Completer<GoogleMapController> _controller = Completer<GoogleMapController>();
+  final TextEditingController _searchController = TextEditingController();
+  LatLng? _current;
+  bool _loading = true;
+  String? _address;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final pos = await LocationService.getCurrentPosition();
+      setState(() {
+        _current = LatLng(pos.latitude, pos.longitude);
+        _loading = false;
+      });
+      final addr = await LocationService.reverseGeocode(pos.latitude, pos.longitude);
+      if (mounted) setState(() => _address = addr);
+    } catch (_) {
+      // Fallback to a default coordinate if permissions denied (San Francisco)
+      setState(() {
+        _current = const LatLng(37.7749, -122.4194);
+        _loading = false;
+      });
+      final addr = await LocationService.reverseGeocode(37.7749, -122.4194);
+      if (mounted) setState(() => _address = addr);
+    }
+  }
+
+  Future<void> _useCurrentLocation() async {
+    final p = _current;
+    if (p == null) return;
+    await LocationService.updateAddressFromCoordinates(p.latitude, p.longitude);
+    if (!mounted) return;
+    // Go to Home (products) after confirming location
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Back
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              const SizedBox(height: 4),
+
+              // Title
+              const Text(
+                'Choose your location',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "Let's find your unforgettable event. Choose a location below to get started.",
+                style: TextStyle(color: AppColors.textGrey, height: 1.4),
+              ),
+              const SizedBox(height: 20),
+
+              // Search
+              TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
+                  hintText: 'Search location',
+                  prefixIcon: Icon(Icons.search),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Set on Map button
+              OutlinedButton.icon(
+                icon: const Icon(Icons.map_outlined, color: AppColors.primary),
+                label: const Text('Set Location on Map', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primary, width: 1.5),
+                  minimumSize: const Size.fromHeight(52),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: () async {
+                  final result = await Navigator.pushNamed(context, '/select-location/map');
+                  if (!mounted) return;
+                  if (result is Map) {
+                    final lat = (result['lat'] as num?)?.toDouble();
+                    final lng = (result['lng'] as num?)?.toDouble();
+                    final addr = result['address'] as String?;
+                    if (lat != null && lng != null) {
+                      setState(() {
+                        _current = LatLng(lat, lng);
+                        _address = addr ?? _address;
+                      });
+                    }
+                  }
+                },
+              ),
+
+              const SizedBox(height: 24),
+              const Text('Current Location', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+
+              // Small map preview
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SizedBox(
+                  height: 160,
+                  width: double.infinity,
+                  child: Stack(
+                    children: [
+                      if (_loading || _current == null)
+                        Container(
+                          color: Colors.grey.shade100,
+                          child: const Center(child: CircularProgressIndicator()),
+                        )
+                      else
+                        GoogleMap(
+                          initialCameraPosition: CameraPosition(target: _current!, zoom: 14),
+                          myLocationEnabled: true,
+                          myLocationButtonEnabled: false,
+                          zoomControlsEnabled: false,
+                          scrollGesturesEnabled: false,
+                          zoomGesturesEnabled: false,
+                          tiltGesturesEnabled: false,
+                          rotateGesturesEnabled: false,
+                          onMapCreated: (c) => _controller.complete(c),
+                          markers: {
+                            Marker(
+                              markerId: const MarkerId('current'),
+                              position: _current!,
+                              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+                            )
+                          },
+                        ),
+
+                      // Address pill overlay
+                      Positioned(
+                        left: 16,
+                        top: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+                          ),
+                          child: Text(
+                            (_address == null || _address!.isEmpty) ? 'Select a location' : _address!,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 28),
+              // Use current location button
+              ElevatedButton(
+                onPressed: _useCurrentLocation,
+                child: const Text('Use Current Location'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
