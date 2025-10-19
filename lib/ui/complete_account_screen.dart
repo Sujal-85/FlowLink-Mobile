@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flowlink_mobile/ui/app_theme.dart';
 import 'package:flowlink_mobile/ui/login_screen.dart';
-import 'package:flowlink_mobile/ui/otp_screen.dart';
 import 'package:flowlink_mobile/widgets/slide_fade_route.dart';
+import 'package:flowlink_mobile/services/auth_service.dart';
+import 'package:flowlink_mobile/ui/congratulations_screen.dart';
 
 class CompleteAccountScreen extends StatefulWidget {
   final String email;
@@ -21,6 +22,7 @@ class _CompleteAccountScreenState extends State<CompleteAccountScreen> {
   final _confirmCtrl = TextEditingController();
   bool _obscure1 = true;
   bool _obscure2 = true;
+  bool _loading = false;
 
   @override
   void initState() {
@@ -38,9 +40,34 @@ class _CompleteAccountScreenState extends State<CompleteAccountScreen> {
     super.dispose();
   }
 
-  void _signUp() {
-    if (_formKey.currentState!.validate()) {
-      pushSlideFade(context, OTPScreen(email: _emailCtrl.text.trim()));
+  Future<void> _signUp() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+    try {
+      final email = _emailCtrl.text.trim();
+      final password = _passwordCtrl.text.trim();
+      final first = _firstNameCtrl.text.trim();
+      final last = _lastNameCtrl.text.trim();
+      final displayName = [first, last].where((s) => s.isNotEmpty).join(' ');
+      await AuthService.instance.signUpWithEmailPassword(
+        email: email,
+        password: password,
+        displayName: displayName,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        SlideFadeRoute(
+          page: CongratulationsScreen(displayName: displayName),
+          begin: const Offset(0.0, 0.06),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -99,7 +126,7 @@ class _CompleteAccountScreenState extends State<CompleteAccountScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _firstNameCtrl,
-                      decoration: const InputDecoration(hintText: 'Enter your email address'),
+                      decoration: const InputDecoration(hintText: 'Enter first name'),
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter your first name' : null,
                     ),
                     const SizedBox(height: 14),
@@ -107,7 +134,7 @@ class _CompleteAccountScreenState extends State<CompleteAccountScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _lastNameCtrl,
-                      decoration: const InputDecoration(hintText: 'Enter your name'),
+                      decoration: const InputDecoration(hintText: 'Enter last name'),
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter your last name' : null,
                     ),
                     const SizedBox(height: 14),
@@ -158,8 +185,10 @@ class _CompleteAccountScreenState extends State<CompleteAccountScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _signUp,
-                        child: const Text('Sign Up'),
+                        onPressed: _loading ? null : _signUp,
+                        child: _loading
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Text('Sign Up'),
                       ),
                     ),
                   ],
@@ -174,7 +203,7 @@ class _CompleteAccountScreenState extends State<CompleteAccountScreen> {
                     onTap: () => pushSlideFade(context, const LoginScreen(), begin: const Offset(-0.06, 0.0)),
                     child: const Text(
                       'Login',
-                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: AppColors.greenPrimary, fontWeight: FontWeight.w600),
                     ),
                   )
                 ],

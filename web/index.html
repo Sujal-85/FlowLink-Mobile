@@ -19,6 +19,10 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="FlowLink">
+  <!-- Google Maps API key for google_maps_flutter_web -->
+  <meta name="google_maps_api_key" content="AIzaSyAzaFiwkyyHHYm26oHysitI350kMKFfA_U">
+  <!-- Explicitly include Google Maps JS to avoid race conditions on some versions -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzaFiwkyyHHYm26oHysitI350kMKFfA_U&libraries=places"></script>
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -35,7 +39,5 @@
   <body>
   <!-- Force HTML renderer using custom flutter_bootstrap.js for better compatibility with google_maps_flutter_web -->
   <script src="flutter_bootstrap.js" async></script>
-  <!-- Load Google Maps API after parsing the document to avoid race conditions with DOM elements -->
-  <script defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzaFiwkyyHHYm26oHysitI350kMKFfA_U"></script>
   </body>
 </html>

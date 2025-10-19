@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flowlink_mobile/ui/app_theme.dart';
 import 'package:flowlink_mobile/ui/signup_screen.dart';
-import 'package:flowlink_mobile/ui/otp_screen.dart';
 import 'package:flowlink_mobile/widgets/slide_fade_route.dart';
+import 'package:flowlink_mobile/services/auth_service.dart';
+import 'package:flowlink_mobile/ui/location_intro_screen.dart';
 
 class SignInPasswordScreen extends StatefulWidget {
   final String email;
@@ -19,11 +20,26 @@ class _SignInPasswordScreenState extends State<SignInPasswordScreen> {
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
   bool _rememberMe = false;
+  bool _loading = false;
+  final bool _loadingGoogle = false;
+  final bool _loadingMicrosoft = false;
 
   @override
   void initState() {
     super.initState();
     _emailCtrl = TextEditingController(text: widget.email);
+  }
+
+  Future<void> _continueWithGoogle() async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Use Sign Up to continue with Google')));
+    pushSlideFade(context, const SignupScreen(), begin: const Offset(0.06, 0.0));
+  }
+
+  Future<void> _continueWithMicrosoft() async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Use Sign Up to continue with Microsoft')));
+    pushSlideFade(context, const SignupScreen(), begin: const Offset(0.06, 0.0));
   }
 
   @override
@@ -33,10 +49,23 @@ class _SignInPasswordScreenState extends State<SignInPasswordScreen> {
     super.dispose();
   }
 
-  void _signIn() {
-    if (_formKey.currentState!.validate()) {
-      final email = _emailCtrl.text.trim();
-      pushSlideFade(context, OTPScreen(email: email));
+  Future<void> _signIn() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+    try {
+      await AuthService.instance.signInWithEmailPassword(
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      pushSlideFade(context, const LocationIntroScreen(), withLoader: true, loadingMessage: 'Signing you in...');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -126,7 +155,7 @@ class _SignInPasswordScreenState extends State<SignInPasswordScreen> {
                         TextButton(
                           onPressed: () => ScaffoldMessenger.of(context)
                               .showSnackBar(const SnackBar(content: Text('Forgot Password tapped'))),
-                          style: TextButton.styleFrom(foregroundColor: Colors.red),
+                          style: TextButton.styleFrom(foregroundColor: AppColors.greenPrimary),
                           child: const Text('Forgot Password'),
                         )
                       ],
@@ -135,8 +164,13 @@ class _SignInPasswordScreenState extends State<SignInPasswordScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _signIn,
-                        child: const Text('Sign In'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.greenPrimary,
+                        ),
+                        onPressed: _loading ? null : _signIn,
+                        child: _loading
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Text('Sign In'),
                       ),
                     ),
                   ],
@@ -157,15 +191,23 @@ class _SignInPasswordScreenState extends State<SignInPasswordScreen> {
               _SocialButton(
                 icon: FontAwesomeIcons.google,
                 label: 'Continue with Google',
-                onTap: () => ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('Google sign-in tapped'))),
+                onTap: _loadingGoogle ? null : _continueWithGoogle,
+                backgroundColor: Colors.white,
+                borderColor: const Color(0xFFE4E7EC),
+                textColor: Colors.black87,
+                iconColor: const Color(0xFF4285F4),
+                loading: _loadingGoogle,
               ),
               const SizedBox(height: 12),
               _SocialButton(
-                icon: FontAwesomeIcons.apple,
-                label: 'Continue with Apple',
-                onTap: () => ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('Apple sign-in tapped'))),
+                icon: FontAwesomeIcons.microsoft,
+                label: 'Continue with Microsoft',
+                onTap: _loadingMicrosoft ? null : _continueWithMicrosoft,
+                backgroundColor: Colors.white,
+                borderColor: const Color(0xFFE4E7EC),
+                textColor: Colors.black87,
+                iconColor: const Color(0xFF00A4EF),
+                loading: _loadingMicrosoft,
               ),
               const SizedBox(height: 24),
               Row(
@@ -173,10 +215,10 @@ class _SignInPasswordScreenState extends State<SignInPasswordScreen> {
                 children: [
                   const Text("Don't have an account? ", style: TextStyle(color: AppColors.textGrey)),
                   GestureDetector(
-                    onTap: () => pushSlideFade(context, const SignupScreen(), begin: const Offset(0.06, 0.0)),
+                    onTap: () => pushSlideFade(context, const SignupScreen(), begin: const Offset(0.06, 0.0), withLoader: true, loadingMessage: 'Opening sign up...'),
                     child: const Text(
                       'Sign Up',
-                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: AppColors.greenPrimary, fontWeight: FontWeight.w600),
                     ),
                   )
                 ],
@@ -192,22 +234,42 @@ class _SignInPasswordScreenState extends State<SignInPasswordScreen> {
 class _SocialButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
-  const _SocialButton({required this.icon, required this.label, required this.onTap});
+  final VoidCallback? onTap;
+  final Color? iconColor;
+  final Color? backgroundColor;
+  final Color? borderColor;
+  final Color? textColor;
+  final bool loading;
+
+  const _SocialButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.iconColor,
+    this.backgroundColor,
+    this.borderColor,
+    this.textColor,
+    this.loading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final Color bg = backgroundColor ?? Colors.white;
+    final Color fg = textColor ?? Colors.black87;
+    final Color bc = borderColor ?? const Color(0xFFE4E7EC);
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: FaIcon(icon, color: Colors.black87),
-        label: Text(label, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+        onPressed: loading ? null : onTap,
+        icon: loading
+            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+            : FaIcon(icon, color: iconColor ?? fg),
+        label: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600)),
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFFE4E7EC)),
+          side: BorderSide(color: bc),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          backgroundColor: Colors.white,
+          backgroundColor: bg,
         ),
       ),
     );

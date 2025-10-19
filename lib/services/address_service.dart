@@ -133,7 +133,11 @@ class AddressService {
     }
     list.add(a);
     addresses.value = list;
-    if (a.isDefault) selected.value = a; else selected.value ??= a;
+    if (a.isDefault) {
+      selected.value = a;
+    } else {
+      selected.value ??= a;
+    }
     await _persist();
   }
 

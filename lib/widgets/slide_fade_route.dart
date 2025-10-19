@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flowlink_mobile/widgets/loading_overlay.dart';
 
 class SlideFadeRoute<T> extends PageRouteBuilder<T> {
   final Widget page;
@@ -33,7 +34,10 @@ class SlideFadeRoute<T> extends PageRouteBuilder<T> {
 }
 
 Future<T?> pushSlideFade<T>(BuildContext context, Widget page,
-    {Offset begin = const Offset(0.0, 0.06)}) {
+    {Offset begin = const Offset(0.0, 0.06), bool withLoader = false, String? loadingMessage}) {
+  if (withLoader) {
+    LoadingOverlay.show(context, message: loadingMessage ?? 'Please wait...');
+  }
   return Navigator.of(context).push<T>(
     SlideFadeRoute<T>(page: page, begin: begin),
   );

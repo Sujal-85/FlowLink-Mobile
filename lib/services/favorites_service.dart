@@ -28,7 +28,7 @@ class FavoritesService {
           _map.clear();
           for (final e in data) {
             if (e is Map) {
-              final item = ProductItem.fromJson((e as Map).cast<String, dynamic>());
+              final item = ProductItem.fromJson((e).cast<String, dynamic>());
               _map[_keyFor(item)] = item;
             }
           }

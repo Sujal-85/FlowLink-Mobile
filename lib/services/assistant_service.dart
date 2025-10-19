@@ -26,6 +26,21 @@ class AssistantService {
   // For web, it's enough that the URL is present. The server holds the real key.
   bool get hasConfig => _apiUrl.isNotEmpty;
 
+  // If user passes only the base domain (e.g., https://host.onrender.com),
+  // default to '/api/chat' for the chat endpoint.
+  String _normalizeApiUrl(String raw) {
+    if (raw.isEmpty) return raw;
+    try {
+      final u = Uri.parse(raw);
+      if ((u.path.isEmpty) || u.path == '/') {
+        return Uri.parse('${u.origin}/api/chat').toString();
+      }
+      return raw;
+    } catch (_) {
+      return raw;
+    }
+  }
+
   Future<String> send(List<AssistantMessage> history) async {
     if (!hasConfig) {
       // Fallback local echo-like behavior when not configured
@@ -34,7 +49,8 @@ class AssistantService {
     }
 
     try {
-      final uri = Uri.parse(_apiUrl);
+      final endpoint = _normalizeApiUrl(_apiUrl);
+      final uri = Uri.parse(endpoint);
       final headers = <String, String>{
         'Content-Type': 'application/json',
       };

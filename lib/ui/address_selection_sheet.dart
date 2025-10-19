@@ -22,6 +22,7 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
   final _city = TextEditingController();
   final _state = TextEditingController();
   final _landmark = TextEditingController();
+  final _address = TextEditingController();
   double? _lat;
   double? _lng;
   String? _addrLine;
@@ -44,16 +45,20 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
     _city.dispose();
     _state.dispose();
     _landmark.dispose();
+    _address.dispose();
     super.dispose();
   }
 
   Widget _headerMapCard() {
+    final theme = Theme.of(context);
     final hasLoc = _headerLat != null && _headerLng != null;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: theme.brightness == Brightness.light
+            ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,7 +93,14 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
                 children: [
                   const Icon(Icons.place_rounded, color: Colors.teal),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(_headerAddr!, maxLines: 2, overflow: TextOverflow.ellipsis)),
+                  Expanded(
+                    child: Text(
+                      _headerAddr!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: theme.colorScheme.onSurface),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -121,7 +133,7 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
   @override
   Widget build(BuildContext context) {
     return FractionallySizedBox(
-      heightFactor: 0.9,
+      heightFactor: 0.88,
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         child: BackdropFilter(
@@ -171,6 +183,7 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
               builder: (context, selected, __) {
                 final selectedIdx = selected != null ? list.indexOf(selected) : -1;
                 final isSelected = selectedIdx == (i - 1);
+                final theme = Theme.of(context);
                 return InkWell(
                   borderRadius: BorderRadius.circular(16),
                   onTap: () => AddressService.instance.selected.value = a,
@@ -178,10 +191,14 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
-                      color: isSelected ? Colors.teal.withOpacity(0.06) : Colors.white,
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
-                      ],
+                      color: isSelected
+                          ? (theme.brightness == Brightness.dark
+                              ? Colors.tealAccent.withOpacity(0.12)
+                              : Colors.teal.withOpacity(0.06))
+                          : theme.cardColor,
+                      boxShadow: theme.brightness == Brightness.light
+                          ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))]
+                          : null,
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,15 +222,15 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: Colors.black87,
+                                        color: theme.brightness == Brightness.dark ? Colors.white24 : Colors.black87,
                                         borderRadius: BorderRadius.circular(999),
                                       ),
-                                      child: const Text('Default', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                      child: Text('Default', style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 11)),
                                     ),
                                 ],
                               ),
                               const SizedBox(height: 4),
-                              Text(a.toString(), style: const TextStyle(color: Colors.black87)),
+                              Text(a.toString(), style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.9))),
                               const SizedBox(height: 8),
                               Row(
                                 children: [
@@ -247,10 +264,16 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
 
   Widget _addNewEntry() {
     final kb = MediaQuery.of(context).viewInsets.bottom;
+    final theme = Theme.of(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       padding: EdgeInsets.fromLTRB(16, 12, 16, (_showForm ? kb : 0) + 24),
-      decoration: const BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, -2))]),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        boxShadow: theme.brightness == Brightness.light
+            ? const [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, -2))]
+            : null,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -278,9 +301,9 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
+                        color: theme.brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF3F4F6),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                        border: Border.all(color: theme.brightness == Brightness.dark ? Colors.white24 : const Color(0xFFE5E7EB)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,6 +370,17 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
                             ),
                           ],
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Detailed address input
+                    TextField(
+                      controller: _address,
+                      minLines: 2,
+                      maxLines: 3,
+                      textInputAction: TextInputAction.newline,
+                      decoration: const InputDecoration(
+                        hintText: 'Flat/House no., Building, Street, Area',
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -431,7 +465,7 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
       isDefault: _default,
       lat: _lat,
       lng: _lng,
-      addressLine: _addrLine,
+      addressLine: _address.text.trim().isNotEmpty ? _address.text.trim() : _addrLine,
     );
     await AddressService.instance.add(addr);
     setState(() {
@@ -443,6 +477,7 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
       _city.clear();
       _state.clear();
       _landmark.clear();
+      _address.clear();
       _lat = null;
       _lng = null;
       _addrLine = null;
@@ -459,7 +494,9 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
         _lat = pos.latitude;
         _lng = pos.longitude;
         _addrLine = line;
-        if (_pincode.text.isEmpty) _pincode.text = '';
+        if (_address.text.trim().isEmpty && (line.trim().isNotEmpty)) {
+          _address.text = line.trim();
+        }
       });
     } catch (_) {
       if (!mounted) return;
@@ -474,6 +511,9 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
       _lat = (result['lat'] as num).toDouble();
       _lng = (result['lng'] as num).toDouble();
       _addrLine = (result['address'] ?? '') as String?;
+      if (_address.text.trim().isEmpty && ((_addrLine ?? '').trim().isNotEmpty)) {
+        _address.text = _addrLine!.trim();
+      }
     });
   }
 }

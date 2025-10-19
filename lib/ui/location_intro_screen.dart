@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flowlink_mobile/services/location_service.dart';
 import 'package:flowlink_mobile/ui/app_theme.dart';
+import 'package:flowlink_mobile/ui/location_select_screen.dart';
+import 'package:flowlink_mobile/widgets/slide_fade_route.dart';
+import 'package:flowlink_mobile/widgets/loading_overlay.dart';
 
 class LocationIntroScreen extends StatefulWidget {
   const LocationIntroScreen({super.key});
@@ -48,6 +51,7 @@ class _LocationIntroScreenState extends State<LocationIntroScreen> {
   Future<void> _useCurrentLocation() async {
     final p = _current;
     if (p == null) return;
+    LoadingOverlay.show(context, message: 'Setting your location...');
     await LocationService.updateAddressFromCoordinates(p.latitude, p.longitude);
     if (!mounted) return;
     // Go to Home (products) after confirming location
@@ -96,20 +100,26 @@ class _LocationIntroScreenState extends State<LocationIntroScreen> {
 
               // Set on Map button
               OutlinedButton.icon(
-                icon: const Icon(Icons.map_outlined, color: AppColors.primary),
-                label: const Text('Set Location on Map', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                icon: const Icon(Icons.map_outlined, color: AppColors.greenPrimary),
+                label: const Text('Set Location on Map', style: TextStyle(color: AppColors.greenPrimary, fontWeight: FontWeight.w600)),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.primary, width: 1.5),
+                  side: const BorderSide(color: AppColors.greenPrimary, width: 1.5),
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 onPressed: () async {
-                  final result = await Navigator.pushNamed(context, '/select-location/map');
+                  final result = await pushSlideFade<Map<String, dynamic>>(
+                    context,
+                    const LocationSelectScreen(),
+                    withLoader: true,
+                    loadingMessage: 'Opening map...'
+                  );
                   if (!mounted) return;
-                  if (result is Map) {
-                    final lat = (result['lat'] as num?)?.toDouble();
-                    final lng = (result['lng'] as num?)?.toDouble();
-                    final addr = result['address'] as String?;
+                  if (result != null) {
+                    final map = result;
+                    final lat = (map['lat'] as num?)?.toDouble();
+                    final lng = (map['lng'] as num?)?.toDouble();
+                    final addr = map['address'] as String?;
                     if (lat != null && lng != null) {
                       setState(() {
                         _current = LatLng(lat, lng);
@@ -160,6 +170,7 @@ class _LocationIntroScreenState extends State<LocationIntroScreen> {
                       // Address pill overlay
                       Positioned(
                         left: 16,
+                        right: 16,
                         top: 16,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

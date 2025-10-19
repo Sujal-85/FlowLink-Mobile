@@ -136,101 +136,43 @@ class _LocationSelectScreenState extends State<LocationSelectScreen> {
               ),
             ),
           ),
-          // Bottom panel
-          Positioned(
-            top: mapHeight - 18,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
-                ),
-                boxShadow: [
-                  BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, -2)),
-                ],
-              ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 44,
-                        height: 5,
+                    if ((_pickedAddress ?? '').isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE5E7EB),
-                          borderRadius: BorderRadius.circular(100),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    // Scrollable content area so the list/card is always visible
-                    Expanded(
-                      child: ListView(
-                        padding: EdgeInsets.zero,
-                        physics: const BouncingScrollPhysics(),
-                        children: [
-                          const Text('Selected Location', style: TextStyle(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 8),
-                          GestureDetector(
-                            onTap: _confirm,
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF3F4F6),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFE5E7EB)),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(Icons.place_rounded, color: AppColors.primary),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _resolvingAddress
-                                              ? 'Fetching address...'
-                                              : (_pickedAddress ?? 'Tap on map to pick a location'),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 14, color: Colors.black87),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const Icon(Icons.chevron_right_rounded, color: Colors.black45),
-                                ],
+                        child: Row(
+                          children: [
+                            const Icon(Icons.place_rounded, color: AppColors.greenPrimary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _resolvingAddress ? 'Fetching address...' : _pickedAddress!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text('Popular Locations', style: TextStyle(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 8),
-                          const _LocationTile(title: 'Ratnagiri', subtitle: 'Maharashtra, India', distance: '3.2 KM'),
-                          const _LocationTile(title: 'Mirjole', subtitle: 'Ratnagiri, Maharashtra', distance: '5.6 KM'),
-                          const _LocationTile(title: 'Nachane', subtitle: 'Ratnagiri, Maharashtra', distance: '8.1 KM'),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
                         onPressed: _confirm,
-                        child: const Text('Confirm Location', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                        child: const Text('Confirm Location'),
                       ),
                     ),
                   ],
@@ -252,7 +194,7 @@ Widget _mapPin() {
       color: Colors.white,
       shape: BoxShape.circle,
       boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
-      border: Border.all(color: AppColors.primary, width: 3),
+      border: Border.all(color: AppColors.greenPrimary, width: 3),
     ),
   );
 }
@@ -284,7 +226,7 @@ class _LocationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 2),
-      leading: const Icon(Icons.location_on, color: AppColors.primary),
+      leading: const Icon(Icons.location_on, color: AppColors.greenPrimary),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(subtitle, overflow: TextOverflow.ellipsis, maxLines: 1),
       trailing: Text(distance, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),

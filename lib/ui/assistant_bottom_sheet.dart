@@ -44,13 +44,14 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? Colors.black.withOpacity(0.35) : Colors.white.withOpacity(0.7);
-    final border = isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.4);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isDark ? theme.cardColor.withOpacity(0.96) : Colors.white.withOpacity(0.9);
+    final border = isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return FractionallySizedBox(
-      heightFactor: 0.92,
+      heightFactor: 0.85,
       child: _buildSheet(
         context,
         isDark: isDark,
@@ -71,13 +72,13 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: bgColor,
             border: Border(top: BorderSide(color: borderColor)),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 20, offset: const Offset(0, -6)),
+              BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.15), blurRadius: 20, offset: const Offset(0, -6)),
             ],
           ),
           child: SafeArea(
@@ -93,7 +94,7 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white30 : Colors.black26,
+                      color: isDark ? Colors.white24 : Colors.black26,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
@@ -135,7 +136,7 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
                     ),
                   ),
                   SizedBox(
-                    height: 44,
+                    height: 40,
                     child: ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       scrollDirection: Axis.horizontal,
@@ -165,7 +166,7 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
 
   Widget _bubble(String text, {required bool isUser, required bool isDark}) {
     final userColor = const Color(0xFF1E88E5); // blue bubble
-    final botColor = isDark ? Colors.grey.shade900.withOpacity(0.7) : Colors.grey.shade100.withOpacity(0.9);
+    final botColor = isDark ? const Color(0xFF1C212A) : Colors.grey.shade100.withOpacity(0.95);
 
     final align = isUser ? Alignment.centerRight : Alignment.centerLeft;
     final radius = isUser
@@ -197,7 +198,7 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
             ),
             child: Text(
               text,
-              style: TextStyle(fontSize: 15, color: isUser ? Colors.white : (isDark ? Colors.white70 : Colors.black87)),
+              style: TextStyle(fontSize: 15, color: isUser ? Colors.white : (isDark ? Colors.white : Colors.black87)),
             ),
           ),
         ],
@@ -212,7 +213,7 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isDark ? Colors.grey.shade900.withOpacity(0.7) : Colors.white,
+          color: isDark ? const Color(0xFF1C212A) : Colors.white,
           borderRadius: const BorderRadius.only(topLeft: Radius.circular(18), topRight: Radius.circular(18), bottomRight: Radius.circular(18)),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
         ),
@@ -231,7 +232,7 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
   }
 
   Widget _inputBar({required bool isDark}) {
-    final fill = Colors.white;
+    final fill = isDark ? const Color(0xFF1A1D23) : Colors.white;
     return SafeArea(
       top: false,
       child: Padding(
@@ -240,12 +241,12 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
           children: [
             Expanded(
               child: Container(
-                decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(999)),
+                decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(999), border: Border.all(color: isDark ? Colors.white12 : Colors.black12)),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.mic_none_rounded),
+                      icon: Icon(Icons.mic_none_rounded, color: isDark ? Colors.white70 : Colors.black54),
                       onPressed: () {
                         showModalBottomSheet(
                           context: context,
@@ -256,7 +257,7 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
                     Expanded(
                       child: TextField(
                         controller: _input,
-                        decoration: const InputDecoration(hintText: 'Type a message…', border: InputBorder.none),
+                        decoration: InputDecoration(hintText: 'Type a message…', border: InputBorder.none, hintStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black45)),
                         onTap: _scrollToEnd,
                         onSubmitted: (_) => _send(),
                         textInputAction: TextInputAction.send,
@@ -268,8 +269,8 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
             ),
             const SizedBox(width: 8),
             SizedBox(
-              height: 48,
-              width: 48,
+              height: 44,
+              width: 44,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(shape: const CircleBorder(), padding: EdgeInsets.zero),
                 onPressed: _sending ? null : _send,

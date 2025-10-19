@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
   import 'package:flowlink_mobile/ui/app_theme.dart';
   import 'package:flowlink_mobile/services/cart_service.dart';
   import 'package:flowlink_mobile/ui/assistant_bottom_sheet.dart';
-  import 'package:flowlink_mobile/ui/share_bottom_sheet.dart';
   import 'package:flowlink_mobile/ui/order_preview_screen.dart';
   import 'package:flowlink_mobile/services/favorites_service.dart';
+  import 'package:share_plus/share_plus.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   const ProductDetailScreen({super.key, required this.product});
@@ -435,12 +435,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> _openShare() async {
     final p = widget.product;
     final link = p.productUrl.isNotEmpty ? p.productUrl : 'https://flowlink.example/product?name=${Uri.encodeComponent(p.name)}';
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => ShareBottomSheet(title: p.name, link: link),
-    );
+    final message = 'Check this on FlowLink: ${p.name}\n$link';
+    await Share.share(message, subject: p.name);
   }
 
 }

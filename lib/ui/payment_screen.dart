@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flowlink_mobile/ui/app_theme.dart';
 import 'package:flowlink_mobile/widgets/success_dialog.dart';
+import 'package:flowlink_mobile/widgets/feedback_dialog.dart';
 import 'package:flowlink_mobile/services/orders_service.dart';
 import 'package:flowlink_mobile/services/address_service.dart';
 import 'package:flowlink_mobile/services/cart_service.dart';
+import 'package:flowlink_mobile/utils/upi_payment.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key, required this.total});
@@ -13,33 +14,29 @@ class PaymentScreen extends StatefulWidget {
   State<PaymentScreen> createState() => _PaymentScreenState();
 }
 
-class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProviderStateMixin {
+class _PaymentScreenState extends State<PaymentScreen> {
   // UPI
   String _upiProvider = '';// 'gpay' | 'phonepe' | 'paytm' | ''
   final TextEditingController _upiId = TextEditingController();
 
   // Card
   int _savedCardIndex = -1; // -1 none selected
-  final List<String> _savedCards = const ['•••• 4242 (Visa)', '•••• 1111 (Mastercard)'];
+  final List<String> _savedCards = ['•••• 4242 (Visa)', '•••• 1111 (Mastercard)'];
   final TextEditingController _cardNumber = TextEditingController();
   final TextEditingController _cardExpiry = TextEditingController();
   final TextEditingController _cardCvv = TextEditingController();
-  bool _saveCard = true;
+  final bool _saveCard = true;
 
   // NetBanking
-  String _bank = '';
+  final String _bank = '';
   final List<String> _banks = const ['HDFC', 'ICICI', 'SBI', 'Axis', 'Kotak'];
 
   // COD
-  bool _codAgree = false;
-
-  late final TabController _tabController;
+  final bool _codAgree = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(() => setState(() {}));
     _upiId.addListener(_refresh);
     _cardNumber.addListener(_refresh);
     _cardExpiry.addListener(_refresh);
@@ -52,7 +49,6 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     _cardNumber.dispose();
     _cardExpiry.dispose();
     _cardCvv.dispose();
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -62,92 +58,378 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final entries = CartService.instance.entries.value;
+    final itemsCount = entries.fold<int>(0, (acc, e) => acc + e.qty);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Payment'),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12.0),
-            child: Center(
-              child: Text('Secure Checkout 🔒', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          )
-        ],
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Payment Options', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('$itemsCount items. Total: ₹${widget.total.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          ],
+        ),
       ),
       body: SafeArea(
-        child: Column(
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
           children: [
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
-              ),
-              child: TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                labelColor: Colors.black87,
-                tabs: const [
-                  Tab(text: 'UPI'),
-                  Tab(text: 'Card'),
-                  Tab(text: 'Net Banking'),
-                  Tab(text: 'Cash on Delivery'),
-                ],
-              ),
-            ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _upiTab(),
-                  _cardTab(),
-                  _netBankingTab(),
-                  _codTab(),
-                ],
-              ),
-            ),
-            _bottomBar(),
+            const SizedBox(height: 8),
+            _addressSummary(),
+            const SizedBox(height: 12),
+            _promoBanner(),
+            const SizedBox(height: 12),
+            _preferredPaymentCard(),
+            const SizedBox(height: 16),
+            _upiOptionsCard(),
+            const SizedBox(height: 16),
+            _cardsListCard(),
+            const SizedBox(height: 16),
+            _morePaymentOptions(),
+            const SizedBox(height: 12),
           ],
         ),
       ),
     );
   }
 
-  // ---------------- UPI ----------------
-  Widget _upiTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text('Choose UPI App', style: TextStyle(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        Row(children: [
-          _upiAppButton(
-            label: 'GPay',
-            value: 'gpay',
-            icon: Image.asset('assets/images/google.png', width: 20, height: 20, errorBuilder: (_, __, ___) => const Icon(Icons.account_balance_wallet_outlined)),
-          ),
-          const SizedBox(width: 8),
-          _upiAppButton(
-            label: 'PhonePe',
-            value: 'phonepe',
-            icon: const Icon(Icons.account_balance_wallet_outlined, color: Colors.deepPurple),
-          ),
-          const SizedBox(width: 8),
-          _upiAppButton(
-            label: 'Paytm',
-            value: 'paytm',
-            icon: const Icon(Icons.account_balance_wallet_outlined, color: Colors.blue),
-          ),
-        ]),
-        const SizedBox(height: 12),
-        const Text('Or enter UPI ID', style: TextStyle(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _upiId,
-          decoration: const InputDecoration(hintText: 'yourname@upi'),
+  // ---------------- Header helpers ----------------
+  Widget _addressSummary() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
         ),
-      ],
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            const Icon(Icons.location_on_outlined, color: Colors.black87),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ValueListenableBuilder<Address?>(
+                valueListenable: AddressService.instance.selected,
+                builder: (context, addr, _) {
+                  final title = addr == null ? 'Add delivery address' : addr.addressLine ?? addr.landmark ?? addr.city;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 2),
+                      const Text('Delivery in 10 mins', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _promoBanner() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF0E0),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: const [
+            Icon(Icons.local_offer_outlined, color: Colors.deepOrange),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text('Avail single-click payments, instant refunds and cashbacks!'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --------------- Preferred Payment ---------------
+  Widget _preferredPaymentCard() {
+    final card = _savedCards.isNotEmpty ? _savedCards.first : 'Add Card';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Preferred Payment', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const CircleAvatar(radius: 14, backgroundColor: Colors.blue, child: Text('V', style: TextStyle(color: Colors.white))),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(card, style: const TextStyle(fontWeight: FontWeight.w700))),
+                    const Icon(Icons.check_circle, color: Colors.green),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _cardCvv,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(hintText: 'CVV'),
+                        obscureText: true,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: _cardCvv.text.trim().length >= 3 ? _payNow : null,
+                        child: Text('PAY  ₹${widget.total.toStringAsFixed(0)}'),
+                      ),
+                    )
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------- UPI Section ----------------
+  Widget _upiOptionsCard() {
+    final upiIds = <String>[];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('UPI', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Column(
+              children: [
+                ...upiIds.map((id) => RadioListTile<String>(
+                      value: id,
+                      groupValue: _upiProvider,
+                      onChanged: (v) => setState(() => _upiProvider = v ?? ''),
+                      title: Text(id),
+                    )),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.add, color: Colors.deepOrange),
+                  title: const Text('Add New UPI ID'),
+                  onTap: _showAddUpiIdSheet,
+                ),
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: ElevatedButton(
+                      onPressed: (_upiProvider.isNotEmpty || _upiId.text.trim().isNotEmpty)
+                          ? () async {
+                              // Determine the UPI ID to use: selected provider value or entered ID
+                              // final vpa = (_upiProvider.isNotEmpty ? _upiProvider : _upiId.text).trim();
+                              // Use order total as amount and a readable merchant/payee name
+                              final amount = widget.total.toStringAsFixed(2);
+                              const name = 'FlowLink Store';
+                              const String vpa = 'khedekarsujay5-1@okicici';
+
+                              await initiateUpiPayment(
+                                context,
+                                upiId: vpa,
+                                name: name,
+                                amount: amount,
+                                // note defaults to 'FlowLink Payment'
+                              );
+                            }
+                          : null,
+                      child: Text('Pay with UPI  •  ₹${widget.total.toStringAsFixed(0)}'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAddUpiIdSheet() async {
+    final controller = TextEditingController(text: _upiId.text);
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Add UPI ID', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                const SizedBox(height: 8),
+                TextField(controller: controller, decoration: const InputDecoration(hintText: 'yourname@upi')),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _upiId.text = controller.text.trim();
+                        _upiProvider = _upiId.text;
+                      });
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text('Save'),
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --------------- Cards Section ---------------
+  Widget _cardsListCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Credit & Debit cards', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Column(
+              children: [
+                ...List.generate(_savedCards.length, (i) => RadioListTile<int>(
+                      value: i,
+                      groupValue: _savedCardIndex,
+                      onChanged: (v) => setState(() => _savedCardIndex = v ?? -1),
+                      title: Text(_savedCards[i]),
+                    )),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.add, color: Colors.deepOrange),
+                  title: const Text('Add New Card'),
+                  onTap: _showAddCardSheet,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAddCardSheet() async {
+    _cardNumber.clear();
+    _cardExpiry.clear();
+    _cardCvv.clear();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Align(alignment: Alignment.centerLeft, child: Text('Add New Card', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16))),
+                const SizedBox(height: 12),
+                TextField(controller: _cardNumber, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Card Number')),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: TextField(controller: _cardExpiry, keyboardType: TextInputType.datetime, decoration: const InputDecoration(hintText: 'MM/YY'))),
+                  const SizedBox(width: 12),
+                  Expanded(child: TextField(controller: _cardCvv, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'CVV'), obscureText: true)),
+                ]),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final last4 = _cardNumber.text.trim().padLeft(4, '•').substring(_cardNumber.text.trim().length - 4);
+                      setState(() { _savedCards.add('•••• $last4'); });
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text('Save Card'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --------------- More options ---------------
+  Widget _morePaymentOptions() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('More Payment Options', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Column(
+              children: [
+                ListTile(leading: const Icon(Icons.account_balance_wallet_outlined), title: const Text('Wallets'), trailing: const Icon(Icons.chevron_right), onTap: () {}),
+                const Divider(height: 1),
+                ListTile(leading: const Icon(Icons.credit_card), title: const Text('Sodexo'), trailing: const Icon(Icons.chevron_right), onTap: () {}),
+                const Divider(height: 1),
+                ListTile(leading: const Icon(Icons.account_balance_outlined), title: const Text('Netbanking'), trailing: const Icon(Icons.chevron_right), onTap: () {}),
+                const Divider(height: 1),
+                ListTile(leading: const Icon(Icons.local_shipping_outlined), title: const Text('Pay on Delivery'), trailing: const Icon(Icons.chevron_right), onTap: () {}),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -172,157 +454,7 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
     );
   }
 
-  // ---------------- Card ----------------
-  Widget _cardTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (_savedCards.isNotEmpty) ...[
-          const Text('Saved Cards', style: TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          ...List.generate(_savedCards.length, (i) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
-              ),
-              child: RadioListTile<int>(
-                value: i,
-                groupValue: _savedCardIndex,
-                onChanged: (v) => setState(() => _savedCardIndex = v ?? -1),
-                title: Text(_savedCards[i]),
-              ),
-            );
-          }),
-          const SizedBox(height: 12),
-        ],
-        const Text('Add New Card', style: TextStyle(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _cardNumber,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(hintText: 'Card Number'),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _cardExpiry,
-                keyboardType: TextInputType.datetime,
-                decoration: const InputDecoration(hintText: 'MM/YY'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _cardCvv,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(hintText: 'CVV'),
-                obscureText: true,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Checkbox(value: _saveCard, onChanged: (v) => setState(() => _saveCard = v ?? true)),
-            const Text('Save card for future payments'),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ------------- Net Banking -------------
-  Widget _netBankingTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text('Select Bank', style: TextStyle(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _banks.map((b) {
-            final active = _bank == b;
-            return ChoiceChip(
-              label: Text(b),
-              selected: active,
-              onSelected: (_) => setState(() => _bank = b),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  // ------------- COD -------------
-  Widget _codTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text('Cash on Delivery', style: TextStyle(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        const Text('Pay with cash upon delivery. Please ensure someone is available to receive the order.'),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Checkbox(value: _codAgree, onChanged: (v) => setState(() => _codAgree = v ?? false)),
-            const Expanded(child: Text('I agree to have the exact amount ready.')),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // Bottom bar
-  Widget _bottomBar() {
-    final canPay = _canPay();
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      decoration: const BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, -2))]),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              height: 52,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: AppColors.primaryGradient,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
-              ),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                onPressed: canPay ? _payNow : null,
-                child: Text('Pay Now • ₹${widget.total.toStringAsFixed(0)}'),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  bool _canPay() {
-    switch (_tabController.index) {
-      case 0: // UPI
-        return _upiProvider.isNotEmpty || _upiId.text.trim().isNotEmpty;
-      case 1: // Card
-        final savedSelected = _savedCardIndex >= 0;
-        final newCardFilled = _cardNumber.text.trim().length >= 12 && _cardExpiry.text.trim().isNotEmpty && _cardCvv.text.trim().length >= 3;
-        return savedSelected || newCardFilled;
-      case 2: // Net Banking
-        return _bank.isNotEmpty;
-      case 3: // COD
-        return _codAgree;
-      default:
-        return false;
-    }
-  }
+  // Removed tab-based sections; the new design uses a single scrollable page
 
   Future<void> _payNow() async {
     // Create orders from current cart entries
@@ -354,11 +486,16 @@ class _PaymentScreenState extends State<PaymentScreen> with SingleTickerProvider
       context,
       title: 'Payment Successful',
       message: 'Your order has been placed successfully. Thank you for shopping with FlowLink!',
-      buttonText: 'View Orders',
+      buttonText: 'Continue',
       onContinue: () {
-        // Close PaymentScreen and go to Orders
-        Navigator.of(context).pop();
-        Navigator.of(context).pushNamed('/orders');
+        final ids = created.map((o) => o.id).toList();
+        Future.microtask(() async {
+          await showFeedbackDialog(context, orderIds: ids);
+          if (!context.mounted) return;
+          // Close PaymentScreen and go to Orders after feedback
+          Navigator.of(context).pop();
+          Navigator.of(context).pushNamed('/orders');
+        });
       },
     );
   }

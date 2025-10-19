@@ -3,7 +3,7 @@ import 'package:flowlink_mobile/ui/app_theme.dart';
 
 class LanguageListScreen extends StatelessWidget {
   final String? selected;
-  LanguageListScreen({super.key, this.selected});
+  const LanguageListScreen({super.key, this.selected});
 
   final _languages = const [
     'English (UK)',
@@ -48,14 +48,14 @@ class LanguageListScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFF9FAFB),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: isSelected ? AppColors.primary : const Color(0xFFE4E7EC), width: 1.5),
+                border: Border.all(color: isSelected ? AppColors.greenPrimary : const Color(0xFFE4E7EC), width: 1.5),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(
                 children: [
                   Icon(
                     isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                    color: isSelected ? AppColors.primary : const Color(0xFF98A2B3),
+                    color: isSelected ? AppColors.greenPrimary : const Color(0xFF98A2B3),
                   ),
                   const SizedBox(width: 12),
                   Text(lang, style: const TextStyle(fontWeight: FontWeight.w600)),

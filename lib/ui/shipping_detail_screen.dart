@@ -53,6 +53,7 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
       appBar: AppBar(title: const Text('Shipping Status')),
       body: ListView(
         children: [
+          _trackingBanner(),
           _productOverview(o, status, eta),
           const SizedBox(height: 8),
           _timeline(o.stageIndex),
@@ -61,6 +62,36 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
           const SizedBox(height: 12),
           _extraInfo(o),
         ],
+      ),
+    );
+  }
+
+  Widget _trackingBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      height: 150,
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))]),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              'https://www.securetrack.ae/wp-content/uploads/2024/01/gps.webp',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade200),
+            ),
+            Align(
+              alignment: Alignment.bottomLeft,
+              child: Container(
+                margin: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.55), borderRadius: BorderRadius.circular(10)),
+                child: const Text('Live shipment tracking', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -153,6 +184,9 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
       Marker(markerId: const MarkerId('user'), position: dest, infoWindow: const InfoWindow(title: 'Destination')),
       Marker(markerId: const MarkerId('vehicle'), position: _vehicle, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), infoWindow: const InfoWindow(title: 'Courier')),
     };
+    final polylines = <Polyline>{
+      Polyline(polylineId: const PolylineId('route'), color: Colors.black87, width: 4, points: [origin, _vehicle, dest]),
+    };
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       height: 220,
@@ -167,6 +201,7 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
               myLocationButtonEnabled: false,
               zoomControlsEnabled: false,
               markers: markers,
+              polylines: polylines,
               onMapCreated: (c) => _controller.complete(c),
             ),
             Positioned(
