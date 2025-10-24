@@ -11,7 +11,7 @@ class UpiPendingScreen extends StatefulWidget {
 }
 
 class _UpiPendingScreenState extends State<UpiPendingScreen> {
-  static const int _totalSeconds = 1 * 60; // 5 mins
+  static const int _totalSeconds = 5 * 60; // 5 mins
   late int _remainingSeconds;
   Timer? _timer;
 
@@ -53,7 +53,7 @@ class _UpiPendingScreenState extends State<UpiPendingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('PAYMENT DETAILS', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.2)),
-            Text('${widget.itemsCount} items. Total: ₹${widget.total.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            Text('${widget.itemsCount} items. Payable: ₹${widget.total.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
           ],
         ),
       ),
@@ -118,11 +118,22 @@ class _UpiPendingScreenState extends State<UpiPendingScreen> {
               ),
             ),
             const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text("I've completed the payment"),
+                ),
+              ),
+            ),
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context, false),
               child: const Text('Cancel payment', style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.w800)),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
           ],
         ),
       ),

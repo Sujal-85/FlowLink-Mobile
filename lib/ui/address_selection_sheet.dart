@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flowlink_mobile/services/address_service.dart';
 import 'package:flowlink_mobile/services/location_service.dart';
@@ -18,11 +17,16 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
 
   final _name = TextEditingController();
   final _mobile = TextEditingController();
+  final _altMobile = TextEditingController();
+  final _email = TextEditingController();
   final _pincode = TextEditingController();
   final _city = TextEditingController();
   final _state = TextEditingController();
   final _landmark = TextEditingController();
   final _address = TextEditingController();
+  final _address2 = TextEditingController();
+  final _instructions = TextEditingController();
+  String _type = 'Home';
   double? _lat;
   double? _lng;
   String? _addrLine;
@@ -41,11 +45,15 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
   void dispose() {
     _name.dispose();
     _mobile.dispose();
+    _altMobile.dispose();
+    _email.dispose();
     _pincode.dispose();
     _city.dispose();
     _state.dispose();
     _landmark.dispose();
     _address.dispose();
+    _address2.dispose();
+    _instructions.dispose();
     super.dispose();
   }
 
@@ -132,34 +140,36 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return FractionallySizedBox(
-      heightFactor: 0.88,
+    final media = MediaQuery.of(context);
+    final kb = media.viewInsets.bottom;
+    final screenH = media.size.height;
+    final targetH = ((screenH - kb) < screenH * 0.88) ? (screenH - kb) : (screenH * 0.88);
+    return SizedBox(
+      height: targetH,
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Scaffold(
-            backgroundColor: Theme.of(context).cardColor.withOpacity(0.96),
-            resizeToAvoidBottomInset: true,
-            appBar: AppBar(
-              automaticallyImplyLeading: false,
-              title: const Text('Select Delivery Address'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).maybePop(AddressService.instance.selected.value),
-                  child: const Text('Done'),
-                ),
-              ],
-            ),
-            body: SafeArea(
-              top: false,
-              child: Column(
-                children: [
-                  Expanded(child: _addressList()),
-                  const Divider(height: 1),
-                  _addNewEntry(),
-                ],
+        child: Scaffold(
+          backgroundColor: Theme.of(context).cardColor,
+          resizeToAvoidBottomInset: true,
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            title: const Text('Select Delivery Address'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).maybePop(AddressService.instance.selected.value),
+                child: const Text('Done'),
               ),
+            ],
+          ),
+          body: SafeArea(
+            top: false,
+            bottom: false,
+            child: Column(
+              children: [
+                Expanded(child: _addressList()),
+                const Divider(height: 1),
+                Flexible(fit: FlexFit.loose, child: _addNewEntry()),
+              ],
             ),
           ),
         ),
@@ -225,7 +235,14 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
                                         color: theme.brightness == Brightness.dark ? Colors.white24 : Colors.black87,
                                         borderRadius: BorderRadius.circular(999),
                                       ),
-                                      child: Text('Default', style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 11)),
+                                      child: Text(
+                                        'Default',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: theme.brightness == Brightness.dark ? Colors.black87 : Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ),
                                 ],
                               ),
@@ -267,16 +284,19 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
     final theme = Theme.of(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
-      padding: EdgeInsets.fromLTRB(16, 12, 16, (_showForm ? kb : 0) + 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
         color: theme.cardColor,
         boxShadow: theme.brightness == Brightness.light
             ? const [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, -2))]
             : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Column(
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Row(
             children: [
               const Text('Add New Address', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -289,10 +309,9 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
           ),
           if (_showForm) ...[
             const SizedBox(height: 8),
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
+            Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                padding: EdgeInsets.only(bottom: kb),
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -384,6 +403,11 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    TextField(
+                      controller: _address2,
+                      decoration: const InputDecoration(hintText: 'Address line 2 (optional)'),
+                    ),
+                    const SizedBox(height: 8),
                     _row(
                       TextField(
                         controller: _name,
@@ -393,6 +417,19 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
                         controller: _mobile,
                         keyboardType: TextInputType.phone,
                         decoration: const InputDecoration(hintText: 'Mobile'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _row(
+                      TextField(
+                        controller: _altMobile,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(hintText: 'Alternate mobile (optional)'),
+                      ),
+                      TextField(
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(hintText: 'Email (optional)'),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -419,6 +456,35 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    TextField(
+                      controller: _instructions,
+                      minLines: 2,
+                      maxLines: 3,
+                      textInputAction: TextInputAction.newline,
+                      decoration: const InputDecoration(hintText: 'Delivery instructions (optional)')
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Home'),
+                          selected: _type == 'Home',
+                          onSelected: (_) => setState(() => _type = 'Home'),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Work'),
+                          selected: _type == 'Work',
+                          onSelected: (_) => setState(() => _type = 'Work'),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Other'),
+                          selected: _type == 'Other',
+                          onSelected: (_) => setState(() => _type = 'Other'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Checkbox(value: _default, onChanged: (v) => setState(() => _default = v ?? false)),
@@ -436,6 +502,8 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
             ),
           ]
         ],
+          );
+        },
       ),
     );
   }
@@ -458,6 +526,8 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
     final addr = Address(
       name: _name.text.trim(),
       mobile: _mobile.text.trim(),
+      altMobile: _altMobile.text.trim().isEmpty ? null : _altMobile.text.trim(),
+      email: _email.text.trim().isEmpty ? null : _email.text.trim(),
       pincode: _pincode.text.trim(),
       city: _city.text.trim(),
       state: _state.text.trim(),
@@ -466,6 +536,9 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
       lat: _lat,
       lng: _lng,
       addressLine: _address.text.trim().isNotEmpty ? _address.text.trim() : _addrLine,
+      addressLine2: _address2.text.trim().isNotEmpty ? _address2.text.trim() : null,
+      instructions: _instructions.text.trim().isNotEmpty ? _instructions.text.trim() : null,
+      type: _type,
     );
     await AddressService.instance.add(addr);
     setState(() {
@@ -473,11 +546,16 @@ class _AddressSelectionSheetState extends State<AddressSelectionSheet> {
       _default = false;
       _name.clear();
       _mobile.clear();
+      _altMobile.clear();
+      _email.clear();
       _pincode.clear();
       _city.clear();
       _state.clear();
       _landmark.clear();
       _address.clear();
+      _address2.clear();
+      _instructions.clear();
+      _type = 'Home';
       _lat = null;
       _lng = null;
       _addrLine = null;

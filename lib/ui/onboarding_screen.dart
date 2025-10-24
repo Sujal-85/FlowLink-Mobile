@@ -10,8 +10,9 @@ class OnboardingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
+    return Theme(
+      data: buildTheme(),
+      child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -124,7 +125,7 @@ class OnboardingScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text('Shop Fresh, Everyday!', textAlign: TextAlign.center, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text('Shop Fresh, Everyday!', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
                   const Text('Order fresh groceries, fruits, and essentials delivered right to your doorstep.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textGrey, fontSize: 14, height: 1.4)),
                   const SizedBox(height: 20),
@@ -159,6 +160,7 @@ class OnboardingScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

@@ -90,11 +90,11 @@ class _OTPScreenState extends State<OTPScreen> {
                     child: Container(
                       width: 40,
                       height: 40,
-                      decoration: const BoxDecoration(
-                        color: AppColors.lightGrey,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : AppColors.lightGrey,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new, size: 18),
+                      child: Icon(Icons.arrow_back_ios_new, size: 18, color: Theme.of(context).colorScheme.onSurface),
                     ),
                   ),
                 ],
@@ -108,22 +108,26 @@ class _OTPScreenState extends State<OTPScreen> {
               Text.rich(
                 TextSpan(
                   text: 'We have sent a 6 digit code via SMS to\n',
-                  style: const TextStyle(color: AppColors.textGrey),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   children: [
                     TextSpan(
                       text: widget.phoneNumber,
-                      style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(6, (i) => _OtpBox(
-                      controller: _controllers[i],
-                      node: _nodes[i],
-                      onChanged: (v) => _onChanged(i, v),
+                children: List.generate(6, (i) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: _OtpBox(
+                          controller: _controllers[i],
+                          node: _nodes[i],
+                          onChanged: (v) => _onChanged(i, v),
+                        ),
+                      ),
                     )),
               ),
               const SizedBox(height: 24),
@@ -138,7 +142,7 @@ class _OTPScreenState extends State<OTPScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Didn't receive code? ", style: TextStyle(color: AppColors.textGrey)),
+                  Text("Didn't receive code? ", style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
                   GestureDetector(
                     onTap: () async {
                       try {
@@ -165,10 +169,7 @@ class _OTPScreenState extends State<OTPScreen> {
                         );
                       }
                     },
-                    child: const Text(
-                      'Resend Code',
-                      style: TextStyle(color: AppColors.greenPrimary, fontWeight: FontWeight.w600),
-                    ),
+                    child: const Text('Resend Code', style: TextStyle(color: AppColors.greenPrimary, fontWeight: FontWeight.w600)),
                   ),
                 ],
               )
@@ -188,9 +189,8 @@ class _OtpBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 64,
-      child: TextField(
+    final theme = Theme.of(context);
+    return TextField(
         controller: controller,
         focusNode: node,
         textAlign: TextAlign.center,
@@ -200,23 +200,22 @@ class _OtpBox extends StatelessWidget {
         decoration: InputDecoration(
           counterText: '',
           filled: true,
-          fillColor: Colors.white,
+          fillColor: theme.cardColor,
           contentPadding: const EdgeInsets.symmetric(vertical: 18),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+            borderSide: BorderSide(color: theme.dividerColor),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+            borderSide: BorderSide(color: theme.dividerColor),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+            borderSide: BorderSide(color: theme.colorScheme.primary),
           ),
         ),
         onChanged: onChanged,
-      ),
-    );
+      );
   }
 }

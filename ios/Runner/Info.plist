@@ -47,5 +47,22 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>This app uses the camera to scan barcodes and QR codes for quick product lookup.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We use your location to show nearby stores and estimate delivery time.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We use your location to show nearby stores and estimate delivery time.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>We use speech recognition to convert your voice into a search query.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is needed so you can search with your voice.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>upi</string>
+		<string>tez</string>
+		<string>gpay</string>
+		<string>phonepe</string>
+		<string>paytm</string>
+		<string>paytmmp</string>
+	</array>
 </dict>
 </plist>

@@ -101,22 +101,27 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
                     child: Container(
                       width: 40,
                       height: 40,
-                      decoration: const BoxDecoration(color: AppColors.lightGrey, shape: BoxShape.circle),
-                      child: const Icon(Icons.arrow_back_ios_new, size: 18),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : AppColors.lightGrey,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.arrow_back_ios_new, size: 18, color: Theme.of(context).colorScheme.onSurface),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 18),
-              const Text('Personal details', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+              Text('Personal details', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              const Text('Tell us a bit about you to personalize your experience', style: TextStyle(color: AppColors.textGrey)),
+              Text('Tell us a bit about you to personalize your experience', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
               const SizedBox(height: 18),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
+                  boxShadow: Theme.of(context).brightness == Brightness.light
+                      ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))]
+                      : null,
                 ),
                 padding: const EdgeInsets.all(16),
                 child: Form(
@@ -124,7 +129,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('First Name', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('First Name', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _firstCtrl,
@@ -132,14 +137,14 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter your first name' : null,
                       ),
                       const SizedBox(height: 14),
-                      const Text('Last Name', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Last Name', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _lastCtrl,
                         decoration: const InputDecoration(hintText: 'Enter your last name'),
                       ),
                       const SizedBox(height: 14),
-                      const Text('Email (optional)', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Email (optional)', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _emailCtrl,

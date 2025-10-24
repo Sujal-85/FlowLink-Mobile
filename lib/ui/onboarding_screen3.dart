@@ -10,7 +10,9 @@ class OnboardingScreen3 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
+    return Theme(
+      data: buildTheme(),
+      child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -110,6 +112,7 @@ class OnboardingScreen3 extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

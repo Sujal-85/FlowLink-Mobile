@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flowlink_mobile/widgets/success_dialog.dart';
 import 'package:flowlink_mobile/widgets/feedback_dialog.dart';
 import 'package:flowlink_mobile/services/orders_service.dart';
 import 'package:flowlink_mobile/services/address_service.dart';
 import 'package:flowlink_mobile/services/cart_service.dart';
+import 'package:flowlink_mobile/services/upi_repository.dart';
+import 'package:flowlink_mobile/ui/payment_upi_pending_screen.dart';
 import 'package:flowlink_mobile/utils/upi_payment.dart';
+import 'package:flowlink_mobile/services/payment_repository.dart';
+import 'package:flowlink_mobile/ui/payment_methods_screen.dart';
+import 'package:flowlink_mobile/utils/razorpay_stub.dart'
+      if (dart.library.io) 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key, required this.total});
@@ -16,16 +23,16 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   // UPI
-  String _upiProvider = '';// 'gpay' | 'phonepe' | 'paytm' | ''
+  String _upiProvider = '';// holds selected UPI ID (VPA)
   final TextEditingController _upiId = TextEditingController();
+  List<String> _savedUpiIds = <String>[];
+  Map<String, bool> _installedUpiApps = {'gpay': false, 'phonepe': false, 'paytm': false};
+  String _selectedApp = '';
 
   // Card
-  int _savedCardIndex = -1; // -1 none selected
-  final List<String> _savedCards = ['•••• 4242 (Visa)', '•••• 1111 (Mastercard)'];
-  final TextEditingController _cardNumber = TextEditingController();
-  final TextEditingController _cardExpiry = TextEditingController();
+  int _savedCardIndex = -1; // index into _cards, -1 none selected
+  List<CardSummary> _cards = <CardSummary>[];
   final TextEditingController _cardCvv = TextEditingController();
-  final bool _saveCard = true;
 
   // NetBanking
   final String _bank = '';
@@ -34,21 +41,37 @@ class _PaymentScreenState extends State<PaymentScreen> {
   // COD
   final bool _codAgree = false;
 
+  Razorpay? _razorpay;
+  final String _razorpayKey = const String.fromEnvironment('RAZORPAY_KEY', defaultValue: '');
+
+  bool get _rzpSupported {
+    final p = defaultTargetPlatform;
+    return !kIsWeb && (p == TargetPlatform.android || p == TargetPlatform.iOS);
+  }
+
+  double get _onlineDiscount => widget.total >= 300 ? 20.0 : 10.0;
+  double _payableOnline() => (widget.total - _onlineDiscount).clamp(0.0, double.infinity);
+
   @override
   void initState() {
     super.initState();
     _upiId.addListener(_refresh);
-    _cardNumber.addListener(_refresh);
-    _cardExpiry.addListener(_refresh);
     _cardCvv.addListener(_refresh);
+    _loadUpiAndApps();
+    _loadCards();
+    if (_rzpSupported) {
+      _razorpay = Razorpay();
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onRzpSuccess);
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, _onRzpError);
+      _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, _onRzpExternal);
+    }
   }
 
   @override
   void dispose() {
     _upiId.dispose();
-    _cardNumber.dispose();
-    _cardExpiry.dispose();
     _cardCvv.dispose();
+    try { _razorpay?.clear(); } catch (_) {}
     super.dispose();
   }
 
@@ -56,23 +79,54 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _loadUpiAndApps() async {
+    try {
+      final ids = await UpiRepository.instance.listUpiIds();
+      if (!mounted) return;
+      setState(() {
+        _savedUpiIds = ids;
+        if (_upiProvider.isEmpty && ids.isNotEmpty) _upiProvider = ids.first;
+      });
+    } catch (_) {}
+    try {
+      final apps = await detectInstalledUpiApps();
+      if (!mounted) return;
+      setState(() => _installedUpiApps = apps);
+    } catch (_) {}
+  }
+
+  Future<void> _loadCards() async {
+    try {
+      final list = await PaymentRepository.instance.listCards();
+      if (!mounted) return;
+      setState(() {
+        _cards = list;
+        if (_cards.isNotEmpty && (_savedCardIndex < 0 || _savedCardIndex >= _cards.length)) {
+          _savedCardIndex = 0;
+        }
+      });
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final entries = CartService.instance.entries.value;
     final itemsCount = entries.fold<int>(0, (acc, e) => acc + e.qty);
+    final bottomBarH = 68.0;
+    final bottomPad = 24 + MediaQuery.of(context).padding.bottom + bottomBarH;
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Payment Options', style: TextStyle(fontWeight: FontWeight.w800)),
-            Text('$itemsCount items. Total: ₹${widget.total.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            Text('$itemsCount items. Total: ₹${widget.total.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54)),
           ],
         ),
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.only(bottom: 24),
+          padding: EdgeInsets.only(bottom: bottomPad),
           children: [
             const SizedBox(height: 8),
             _addressSummary(),
@@ -99,14 +153,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            const Icon(Icons.location_on_outlined, color: Colors.black87),
+            Icon(Icons.location_on_outlined, color: Theme.of(context).colorScheme.onSurface),
             const SizedBox(width: 10),
             Expanded(
               child: ValueListenableBuilder<Address?>(
@@ -118,7 +172,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     children: [
                       Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
                       const SizedBox(height: 2),
-                      const Text('Delivery in 10 mins', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                      Text('Delivery in 10 mins', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54, fontSize: 12)),
                     ],
                   );
                 },
@@ -136,16 +190,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF0E0),
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.orange.withOpacity(0.16) : const Color(0xFFFFF0E0),
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.all(12),
         child: Row(
-          children: const [
-            Icon(Icons.local_offer_outlined, color: Colors.deepOrange),
-            SizedBox(width: 10),
+          children: [
+            const Icon(Icons.local_offer_outlined, color: Colors.deepOrange),
+            const SizedBox(width: 10),
             Expanded(
-              child: Text('Avail single-click payments, instant refunds and cashbacks!'),
+              child: Text('Pay online and get ₹${_onlineDiscount.toStringAsFixed(0)} OFF instantly. Not applicable on COD.'),
             ),
           ],
         ),
@@ -155,7 +209,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   // --------------- Preferred Payment ---------------
   Widget _preferredPaymentCard() {
-    final card = _savedCards.isNotEmpty ? _savedCards.first : 'Add Card';
+    final hasCards = _cards.isNotEmpty;
+    final card = hasCards
+        ? _cards[(_savedCardIndex >= 0 && _savedCardIndex < _cards.length) ? _savedCardIndex : 0].maskedLabel
+        : 'Add Card';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
@@ -165,7 +222,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
             ),
@@ -175,29 +232,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
               children: [
                 Row(
                   children: [
-                    const CircleAvatar(radius: 14, backgroundColor: Colors.blue, child: Text('V', style: TextStyle(color: Colors.white))),
+                    CircleAvatar(radius: 14, backgroundColor: Theme.of(context).colorScheme.primary, child: const Text('V', style: TextStyle(color: Colors.white))),
                     const SizedBox(width: 8),
                     Expanded(child: Text(card, style: const TextStyle(fontWeight: FontWeight.w700))),
-                    const Icon(Icons.check_circle, color: Colors.green),
+                    if (hasCards) const Icon(Icons.check_circle, color: Colors.green),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _cardCvv,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(hintText: 'CVV'),
-                        obscureText: true,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
                     SizedBox(
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: _cardCvv.text.trim().length >= 3 ? _payNow : null,
-                        child: Text('PAY  ₹${widget.total.toStringAsFixed(0)}'),
+                        onPressed: _rzpSupported ? _startRazorpayCheckout : () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Online card/netbanking checkout is only available on Android/iOS'))),
+                        child: Text('Pay Online  •  ₹${_payableOnline().toStringAsFixed(0)}'),
                       ),
                     )
                   ],
@@ -212,7 +260,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   // ---------------- UPI Section ----------------
   Widget _upiOptionsCard() {
-    final upiIds = <String>[];
+    final upiIds = _savedUpiIds;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
@@ -222,12 +270,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
             ),
             child: Column(
               children: [
+                if (_installedUpiApps.values.any((v) => v))
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                    child: Row(
+                      children: [
+                        if (_installedUpiApps['gpay'] == true)
+                          _upiAppPill(label: 'GPay', code: 'gpay', icon: const Icon(Icons.payments_outlined)),
+                        if (_installedUpiApps['phonepe'] == true) ...[
+                          const SizedBox(width: 8),
+                          _upiAppPill(label: 'PhonePe', code: 'phonepe', icon: const Icon(Icons.account_balance_wallet_outlined)),
+                        ],
+                        if (_installedUpiApps['paytm'] == true) ...[
+                          const SizedBox(width: 8),
+                          _upiAppPill(label: 'Paytm', code: 'paytm', icon: const Icon(Icons.account_balance_outlined)),
+                        ],
+                      ],
+                    ),
+                  ),
                 ...upiIds.map((id) => RadioListTile<String>(
                       value: id,
                       groupValue: _upiProvider,
@@ -249,23 +315,40 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     child: ElevatedButton(
                       onPressed: (_upiProvider.isNotEmpty || _upiId.text.trim().isNotEmpty)
                           ? () async {
-                              // Determine the UPI ID to use: selected provider value or entered ID
-                              // final vpa = (_upiProvider.isNotEmpty ? _upiProvider : _upiId.text).trim();
-                              // Use order total as amount and a readable merchant/payee name
-                              final amount = widget.total.toStringAsFixed(2);
+                              final vpa = (_upiProvider.isNotEmpty ? _upiProvider : _upiId.text).trim();
+                              final amount = _payableOnline().toStringAsFixed(2);
                               const name = 'FlowLink Store';
-                              const String vpa = 'khedekarsujay5-1@okicici';
 
-                              await initiateUpiPayment(
-                                context,
-                                upiId: vpa,
-                                name: name,
-                                amount: amount,
-                                // note defaults to 'FlowLink Payment'
+                              if (_selectedApp.isNotEmpty && (_installedUpiApps[_selectedApp] == true)) {
+                                await initiateUpiPaymentViaApp(
+                                  context,
+                                  upiId: vpa,
+                                  name: name,
+                                  amount: amount,
+                                  app: _selectedApp,
+                                );
+                              } else {
+                                await initiateUpiPayment(
+                                  context,
+                                  upiId: vpa,
+                                  name: name,
+                                  amount: amount,
+                                );
+                              }
+
+                              final entries = CartService.instance.entries.value;
+                              final itemsCount = entries.fold<int>(0, (acc, e) => acc + e.qty);
+                              final confirmed = await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => UpiPendingScreen(total: _payableOnline(), itemsCount: itemsCount),
+                                ),
                               );
+                              if (confirmed == true) {
+                                await _payNow();
+                              }
                             }
                           : null,
-                      child: Text('Pay with UPI  •  ₹${widget.total.toStringAsFixed(0)}'),
+                      child: Text('Pay with UPI  •  ₹${_payableOnline().toStringAsFixed(0)}'),
                     ),
                   ),
                 ),
@@ -300,10 +383,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      final v = controller.text.trim();
+                      if (v.isEmpty) return;
+                      await UpiRepository.instance.addUpiId(v);
+                      if (!mounted) return;
                       setState(() {
-                        _upiId.text = controller.text.trim();
-                        _upiProvider = _upiId.text;
+                        _upiId.text = v;
+                        _upiProvider = v;
+                        if (!_savedUpiIds.contains(v)) _savedUpiIds.insert(0, v);
                       });
                       Navigator.pop(ctx);
                     },
@@ -329,17 +417,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
             ),
             child: Column(
               children: [
-                ...List.generate(_savedCards.length, (i) => RadioListTile<int>(
+                ...List.generate(_cards.length, (i) => RadioListTile<int>(
                       value: i,
                       groupValue: _savedCardIndex,
                       onChanged: (v) => setState(() => _savedCardIndex = v ?? -1),
-                      title: Text(_savedCards[i]),
+                      title: Text(_cards[i].maskedLabel),
                     )),
                 const Divider(height: 1),
                 ListTile(
@@ -356,49 +444,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _showAddCardSheet() async {
-    _cardNumber.clear();
-    _cardExpiry.clear();
-    _cardCvv.clear();
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Align(alignment: Alignment.centerLeft, child: Text('Add New Card', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16))),
-                const SizedBox(height: 12),
-                TextField(controller: _cardNumber, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Card Number')),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: TextField(controller: _cardExpiry, keyboardType: TextInputType.datetime, decoration: const InputDecoration(hintText: 'MM/YY'))),
-                  const SizedBox(width: 12),
-                  Expanded(child: TextField(controller: _cardCvv, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'CVV'), obscureText: true)),
-                ]),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final last4 = _cardNumber.text.trim().padLeft(4, '•').substring(_cardNumber.text.trim().length - 4);
-                      setState(() { _savedCards.add('•••• $last4'); });
-                      Navigator.pop(ctx);
-                    },
-                    child: const Text('Save Card'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaymentMethodsScreen()));
+    await _loadCards();
   }
 
   // --------------- More options ---------------
@@ -412,19 +459,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
             ),
             child: Column(
               children: [
-                ListTile(leading: const Icon(Icons.account_balance_wallet_outlined), title: const Text('Wallets'), trailing: const Icon(Icons.chevron_right), onTap: () {}),
+                // ListTile(leading: const Icon(Icons.account_balance_wallet_outlined), title: const Text('Wallets'), trailing: const Icon(Icons.chevron_right), onTap: () {}),
+                // const Divider(height: 1),
+                // ListTile(leading: const Icon(Icons.credit_card), title: const Text('Sodexo'), trailing: const Icon(Icons.chevron_right), onTap: () {}),
+                // const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.account_balance_outlined),
+                  title: const Text('Netbanking'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _rzpSupported ? _startRazorpayCheckout : () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Netbanking is only available on Android/iOS'))),
+                ),
                 const Divider(height: 1),
-                ListTile(leading: const Icon(Icons.credit_card), title: const Text('Sodexo'), trailing: const Icon(Icons.chevron_right), onTap: () {}),
-                const Divider(height: 1),
-                ListTile(leading: const Icon(Icons.account_balance_outlined), title: const Text('Netbanking'), trailing: const Icon(Icons.chevron_right), onTap: () {}),
-                const Divider(height: 1),
-                ListTile(leading: const Icon(Icons.local_shipping_outlined), title: const Text('Pay on Delivery'), trailing: const Icon(Icons.chevron_right), onTap: () {}),
+                ListTile(leading: const Icon(Icons.local_shipping_outlined), title: const Text('Pay on Delivery'), trailing: const Icon(Icons.chevron_right), onTap: _showCodSheet),
               ],
             ),
           ),
@@ -443,11 +495,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
           height: 44,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
-            color: active ? Colors.white : Colors.grey.shade100,
-            boxShadow: active ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)] : null,
+            color: active ? Theme.of(context).cardColor : (Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.grey.shade100),
+            boxShadow: Theme.of(context).brightness == Brightness.light && active ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)] : null,
           ),
           child: Center(
-            child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: active ? Colors.black87 : Colors.black54)),
+            child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface.withOpacity(active ? 0.9 : 0.6))),
           ),
         ),
       ),
@@ -456,7 +508,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   // Removed tab-based sections; the new design uses a single scrollable page
 
-  Future<void> _payNow() async {
+  Future<void> _payNow({String title = 'Payment Successful', String message = 'Your order has been placed successfully. Thank you for shopping with FlowLink!',}) async {
     // Create orders from current cart entries
     final address = AddressService.instance.selected.value;
     final entries = CartService.instance.entries.value;
@@ -484,8 +536,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     await showSuccessDialog(
       context,
-      title: 'Payment Successful',
-      message: 'Your order has been placed successfully. Thank you for shopping with FlowLink!',
+      title: title,
+      message: message,
       buttonText: 'Continue',
       onContinue: () {
         final ids = created.map((o) => o.id).toList();
@@ -511,19 +563,167 @@ class _PaymentScreenState extends State<PaymentScreen> {
           height: 44,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
-            color: active ? Colors.white : Colors.grey.shade100,
-            boxShadow: active ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)] : null,
+            color: active ? Theme.of(context).cardColor : (Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.grey.shade100),
+            boxShadow: Theme.of(context).brightness == Brightness.light && active ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)] : null,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[icon, const SizedBox(width: 6)],
-              Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: active ? Colors.black87 : Colors.black54)),
+              Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface.withOpacity(active ? 0.9 : 0.6))),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  // App selector pill for UPI app preference
+  Widget _upiAppPill({required String label, required String code, Widget? icon}) {
+    final active = _selectedApp == code;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => setState(() => _selectedApp = active ? '' : code),
+        child: Container(
+          height: 36,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            color: active ? Theme.of(context).cardColor : (Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.grey.shade100),
+            boxShadow: Theme.of(context).brightness == Brightness.light && active ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)] : null,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[icon, const SizedBox(width: 6)],
+              Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface.withOpacity(active ? 0.9 : 0.6))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _startRazorpayCheckout() {
+    final key = _razorpayKey.trim();
+    if (key.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Online payments unavailable: configure RAZORPAY_KEY.')));
+      return;
+    }
+    final amountPaise = (_payableOnline() * 100).round();
+    final addr = AddressService.instance.selected.value;
+    final options = {
+      'key': key,
+      'amount': amountPaise,
+      'name': 'FlowLink',
+      'description': 'Order Payment',
+      'timeout': 300,
+      'prefill': {
+        'contact': addr?.mobile ?? '',
+        'email': '',
+      },
+      'theme': {'color': '#1DB954'},
+    };
+    try {
+      _razorpay?.open(options);
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to start online payment')));
+    }
+  }
+
+  void _onRzpSuccess(PaymentSuccessResponse r) async {
+    await _payNow();
+  }
+
+  void _onRzpError(PaymentFailureResponse r) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment failed or cancelled')));
+  }
+
+  void _onRzpExternal(ExternalWalletResponse r) {}
+
+  Future<void> _showCodSheet() async {
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 360;
+                Widget buttons;
+                if (isNarrow) {
+                  buttons = Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 48,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await _payNow(title: 'Order Placed', message: 'You chose Cash on Delivery. Please keep cash ready.');
+                          },
+                          child: Text('Place Order  •  ₹${widget.total.toStringAsFixed(0)}'),
+                        ),
+                      ),
+                    ],
+                  );
+                } else {
+                  buttons = Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancel'),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              await _payNow(title: 'Order Placed', message: 'You chose Cash on Delivery. Please keep cash ready.');
+                            },
+                            child: Text('Place Order  •  ₹${widget.total.toStringAsFixed(0)}'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Cash on Delivery', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    const Text('Online payment discount is not applicable for COD.'),
+                    const SizedBox(height: 12),
+                    buttons,
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -77,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -90,8 +90,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Container(
                     width: 96,
                     height: 96,
-                    decoration: const BoxDecoration(color: Color(0xFFEAF6DB), shape: BoxShape.circle),
-                    child: const Icon(Icons.local_grocery_store_rounded, size: 44, color: Colors.black87),
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withOpacity(0.12), shape: BoxShape.circle),
+                    child: Icon(Icons.local_grocery_store_rounded, size: 44, color: Theme.of(context).colorScheme.onSurface),
                   ),
                 ).animate().fadeIn(duration: 350.ms).scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOut),
                 const SizedBox(height: 12),
@@ -100,14 +100,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 ).animate().fadeIn(duration: 350.ms, delay: 100.ms).moveY(begin: 8, end: 0, curve: Curves.easeOut),
                 const SizedBox(height: 6),
                 Center(
-                  child: const Text('Fresh groceries delivered fast', style: TextStyle(color: Colors.black54)),
+                  child: Text('Fresh groceries delivered fast', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54)),
                 ).animate().fadeIn(duration: 300.ms, delay: 160.ms),
                 const SizedBox(height: 20),
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
+                    boxShadow: Theme.of(context).brightness == Brightness.light
+                        ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))]
+                        : null,
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Form(
@@ -116,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         
-                        const Text('Email', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
+                        Text('Email', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _emailCtrl,
@@ -124,12 +126,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: const TextStyle(fontSize: 16),
                           decoration: InputDecoration(
                             hintText: 'Enter your email address',
-                            hintStyle: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w400),
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE4E7EC))),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE4E7EC))),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE4E7EC))),
+                            hintStyle: TextStyle(color: Theme.of(context).hintColor, fontSize: 16, fontWeight: FontWeight.w400),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                           ),
                           validator: (v) {
@@ -156,13 +156,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         ).animate().fadeIn(duration: 300.ms, delay: 120.ms),
                         const SizedBox(height: 24),
                         Row(
-                          children: const [
-                            Expanded(child: Divider(color: Color(0xFFE4E7EC), thickness: 1)),
+                          children: [
+                            Expanded(child: Divider(color: Theme.of(context).dividerColor, thickness: 1)),
                             Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: Text('Or continue with', style: TextStyle(color: Color(0xFF6B7280), fontSize: 14, fontWeight: FontWeight.w500)),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text('Or continue with', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.w500)),
                             ),
-                            Expanded(child: Divider(color: Color(0xFFE4E7EC), thickness: 1)),
+                            Expanded(child: Divider(color: Theme.of(context).dividerColor, thickness: 1)),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -170,9 +170,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           icon: FontAwesomeIcons.google,
                           label: 'Continue with Google',
                           onTap: _loadingGoogle ? null : _continueWithGoogle,
-                          backgroundColor: Colors.white,
-                          borderColor: const Color(0xFFE4E7EC),
-                          textColor: Colors.black87,
+                          backgroundColor: Theme.of(context).cardColor,
+                          borderColor: Theme.of(context).dividerColor,
+                          textColor: Theme.of(context).colorScheme.onSurface,
                           iconColor: const Color(0xFF4285F4),
                           loading: _loadingGoogle,
                         ).animate().fadeIn(duration: 250.ms, delay: 140.ms),
@@ -181,9 +181,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           icon: FontAwesomeIcons.microsoft,
                           label: 'Continue with Microsoft',
                           onTap: _loadingMicrosoft ? null : _continueWithMicrosoft,
-                          backgroundColor: Colors.white,
-                          borderColor: const Color(0xFFE4E7EC),
-                          textColor: Colors.black87,
+                          backgroundColor: Theme.of(context).cardColor,
+                          borderColor: Theme.of(context).dividerColor,
+                          textColor: Theme.of(context).colorScheme.onSurface,
                           iconColor: const Color(0xFF00A4EF),
                           loading: _loadingMicrosoft,
                         ).animate().fadeIn(duration: 250.ms, delay: 180.ms),
@@ -192,9 +192,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           icon: FontAwesomeIcons.phone,
                           label: 'Continue with Mobile',
                           onTap: () => pushSlideFade(context, const PhoneInputScreen(), begin: const Offset(0.06, 0.0)),
-                          backgroundColor: Colors.white,
-                          borderColor: const Color(0xFFE4E7EC),
-                          textColor: Colors.black87,
+                          backgroundColor: Theme.of(context).cardColor,
+                          borderColor: Theme.of(context).dividerColor,
+                          textColor: Theme.of(context).colorScheme.onSurface,
                           iconColor: AppColors.greenPrimary,
                           loading: false,
                         ).animate().fadeIn(duration: 250.ms, delay: 220.ms),
@@ -206,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Don't have an account? ", style: TextStyle(color: Color(0xFF6B7280), fontSize: 16)),
+                    Text("Don't have an account? ", style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 16)),
                     GestureDetector(
                       onTap: () => pushSlideFade(context, const SignupScreen(), begin: const Offset(0.06, 0.0), withLoader: true),
                       child: Text('Sign Up', style: TextStyle(color: Theme.of(context).colorScheme.secondary, fontSize: 16, fontWeight: FontWeight.w600)),
@@ -245,9 +245,10 @@ class _SocialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color bg = backgroundColor ?? Colors.white;
-    final Color fg = textColor ?? Colors.black87;
-    final Color bc = borderColor ?? const Color(0xFFE4E7EC);
+    final theme = Theme.of(context);
+    final Color bg = backgroundColor ?? theme.cardColor;
+    final Color fg = textColor ?? theme.colorScheme.onSurface;
+    final Color bc = borderColor ?? theme.dividerColor;
     return SizedBox(
       width: double.infinity,
       height: 56,

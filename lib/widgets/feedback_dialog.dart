@@ -50,7 +50,7 @@ Future<void> showFeedbackDialog(BuildContext context, {required List<String> ord
             scale: scale,
             child: Center(
               child: Material(
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(20),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 380),

@@ -16,6 +16,7 @@ class OrdersListScreen extends StatefulWidget {
 class _OrdersListScreenState extends State<OrdersListScreen> {
   String _statusFilter = 'All';
   String _sort = 'Date'; // Date | Price
+  String _query = '';
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +38,10 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
         slivers: [
           SliverToBoxAdapter(child: _headerBanner(context)),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          SliverToBoxAdapter(child: _searchBar()),
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          SliverToBoxAdapter(child: _quickActions(context)),
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
           SliverToBoxAdapter(child: _filters()),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
           SliverToBoxAdapter(child: _recommendedSection()),
@@ -46,6 +51,12 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
               var list = orders;
               if (_statusFilter != 'All') {
                 list = list.where((o) => o.status == _statusFilter).toList();
+              }
+              if (_query.trim().isNotEmpty) {
+                final q = _query.toLowerCase();
+                list = list
+                    .where((o) => o.productName.toLowerCase().contains(q) || o.id.toLowerCase().contains(q))
+                    .toList();
               }
               if (_sort == 'Price') {
                 list.sort((a, b) => b.price.compareTo(a.price));
@@ -75,6 +86,8 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
               );
             },
           ),
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+          SliverToBoxAdapter(child: _favoritesSection()),
         ],
       ),
     );
@@ -84,44 +97,101 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
   Widget _headerBanner(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Container(
-        height: 110,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: AppColors.primaryGradient,
-          image: const DecorationImage(
-            image: AssetImage('assets/images/onboarding_bg.jpg'),
-            fit: BoxFit.cover,
-            opacity: 0.25,
-          ),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4))],
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              left: 14,
-              top: 16,
-              right: 120,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text('Track your orders', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
-                  SizedBox(height: 6),
-                  Text('Stay updated with live status and ETA', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final height = constraints.maxWidth * 0.38; // responsive height based on width
+          return Container(
+            height: height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4))],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Image.network(
+                resolveImageUrl('https://cdn.shopify.com/s/files/1/0576/9579/7455/files/Track_your_order_1.png?v=1693293697'),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade200, child: const Icon(Icons.broken_image)),
               ),
             ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(topRight: Radius.circular(18), bottomRight: Radius.circular(18)),
-                child: Image.asset('assets/images/vegetables.png', width: 120, height: 110, fit: BoxFit.cover),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
+    );
+  }
+
+  Widget _searchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: TextField(
+        decoration: const InputDecoration(
+          hintText: 'Search orders by name or ID',
+          prefixIcon: Icon(Icons.search),
+        ),
+        onChanged: (v) => setState(() => _query = v),
+      ),
+    );
+  }
+
+  Widget _quickActions(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.replay),
+                label: const Text('Reorder last'),
+                onPressed: () {
+                  final list = OrdersService.instance.orders.value;
+                  if (list.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No orders yet')));
+                    return;
+                  }
+                  final latest = list.reduce((a, b) => a.expectedDate.isAfter(b.expectedDate) ? a : b);
+                  CartService.instance.add(_toProduct(latest));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to cart')));
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.local_shipping_outlined),
+                label: const Text('Track latest'),
+                onPressed: () {
+                  final list = OrdersService.instance.orders.value;
+                  if (list.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No orders to track')));
+                    return;
+                  }
+                  final latest = list.reduce((a, b) => a.expectedDate.isAfter(b.expectedDate) ? a : b);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => ShippingDetailScreen(order: latest)));
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  ProductItem _toProduct(OrderItem o) {
+    return ProductItem(
+      name: o.productName,
+      brand: '',
+      price: o.price,
+      discountPrice: 0.0,
+      imageUrl: o.imageUrl,
+      quantity: '1 unit',
+      category: 'Orders',
+      subCategory: '',
+      productUrl: '',
     );
   }
 
@@ -154,6 +224,41 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
                 itemCount: items.length.clamp(0, 12),
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (_, i) => _productCardSmall(items[i]),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _favoritesSection() {
+    return ValueListenableBuilder<List<ProductItem>>(
+      valueListenable: FavoritesService.instance.favorites,
+      builder: (context, favs, _) {
+        final items = favs;
+        if (items.isEmpty) return const SizedBox.shrink();
+        final list = items.length > 12 ? items.sublist(0, 12) : items;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: const [
+                  Text('Your favourites', style: TextStyle(fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 216,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                itemCount: list.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (_, i) => _productCardSmall(list[i]),
               ),
             ),
           ],
@@ -308,6 +413,25 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text('Expected by $expected', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.local_shipping_outlined, size: 18),
+                        label: const Text('Track'),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ShippingDetailScreen(order: o))),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+                        label: const Text('Reorder'),
+                        onPressed: () {
+                          CartService.instance.add(_toProduct(o));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to cart')));
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

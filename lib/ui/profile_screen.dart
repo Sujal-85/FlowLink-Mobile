@@ -30,7 +30,7 @@ class ProfileScreen extends StatelessWidget {
             height: 220,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.greenPrimary, Color(0xFF0F4D42)],
+                colors: [AppColors.greenPrimary, AppColors.greenDark],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -199,14 +199,14 @@ class ProfileScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(16),
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
-                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SecurityScreen())),
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersListScreen())),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                   child: Row(
                                     children: [
-                                      const _ProfileIcon(icon: Icons.lock_outline),
+                                      const _ProfileIcon(icon: Icons.receipt_long_outlined),
                                       const SizedBox(width: 12),
-                                      const Expanded(child: Text('Password', style: TextStyle(fontWeight: FontWeight.w700))),
+                                      const Expanded(child: Text('Orders', style: TextStyle(fontWeight: FontWeight.w700))),
                                       const Icon(Icons.chevron_right),
                                     ],
                                   ),
@@ -236,6 +236,8 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          _recentOrdersSection(context),
                           const SizedBox(height: 24),
                           SizedBox(
                             height: 52,
@@ -443,6 +445,7 @@ class ProfileScreen extends StatelessWidget {
     return ValueListenableBuilder<List<OrderItem>>(
       valueListenable: OrdersService.instance.orders,
       builder: (context, orders, _) {
+        final theme = Theme.of(context);
         final list = orders.reversed.take(3).toList();
         if (list.isEmpty) {
           return Padding(
@@ -450,9 +453,11 @@ class ProfileScreen extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.cardColor,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
+                boxShadow: theme.brightness == Brightness.light
+                    ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))]
+                    : null,
               ),
               child: const Text('No recent orders'),
             ),
@@ -474,6 +479,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _recentOrderTile(BuildContext context, OrderItem o) {
+    final theme = Theme.of(context);
     final expected = '${o.expectedDate.day}/${o.expectedDate.month}';
     return InkWell(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ShippingDetailScreen(order: o))),
@@ -481,9 +487,11 @@ class ProfileScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: theme.brightness == Brightness.light
+              ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))]
+              : null,
         ),
         child: Row(
           children: [
@@ -494,7 +502,12 @@ class ProfileScreen extends StatelessWidget {
                 width: 56,
                 height: 56,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(width: 56, height: 56, color: Colors.grey.shade200, child: const Icon(Icons.broken_image)),
+                errorBuilder: (_, __, ___) => Container(
+                  width: 56,
+                  height: 56,
+                  color: theme.brightness == Brightness.dark ? Colors.white12 : Colors.grey.shade200,
+                  child: const Icon(Icons.broken_image),
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -506,13 +519,16 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      _statusBadgeSmall(o.status),
+                      _statusBadgeSmall(context, o.status),
                       const Spacer(),
-                      Text('₹${o.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900)),
+                      Text('₹${o.price.toStringAsFixed(0)}', style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.w900)),
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text('Expected by $expected', style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                  Text(
+                    'Expected by $expected',
+                    style: TextStyle(color: theme.brightness == Brightness.dark ? Colors.white70 : Colors.black54, fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -524,26 +540,27 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _statusBadgeSmall(String status) {
+  Widget _statusBadgeSmall(BuildContext context, String status) {
     Color bg;
     Color fg;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     switch (status) {
       case 'Delivered':
-        bg = Colors.green.shade50;
-        fg = Colors.green.shade700;
+        bg = dark ? Colors.green.withOpacity(0.18) : Colors.green.shade50;
+        fg = dark ? Colors.green.shade300 : Colors.green.shade700;
         break;
       case 'Shipped':
       case 'Out for Delivery':
-        bg = Colors.blue.shade50;
-        fg = Colors.blue.shade700;
+        bg = dark ? Colors.blue.withOpacity(0.18) : Colors.blue.shade50;
+        fg = dark ? Colors.blue.shade300 : Colors.blue.shade700;
         break;
       case 'Packed':
-        bg = Colors.orange.shade50;
-        fg = Colors.orange.shade700;
+        bg = dark ? Colors.orange.withOpacity(0.20) : Colors.orange.shade50;
+        fg = dark ? Colors.orange.shade300 : Colors.orange.shade700;
         break;
       default:
-        bg = Colors.grey.shade200;
-        fg = Colors.black87;
+        bg = dark ? Colors.white24 : Colors.grey.shade200;
+        fg = dark ? Colors.white : Colors.black87;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

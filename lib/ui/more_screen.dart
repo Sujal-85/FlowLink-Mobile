@@ -7,6 +7,7 @@ import 'package:flowlink_mobile/ui/privacy_screen.dart';
 import 'package:flowlink_mobile/ui/profile_screen.dart';
 import 'package:flowlink_mobile/ui/settings_screen.dart';
 import 'package:flowlink_mobile/ui/rate_us_screen.dart';
+import 'package:flowlink_mobile/ui/products_list_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -46,11 +47,19 @@ class MoreScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle),
-                        child: const Icon(Icons.search, color: Colors.white),
+                      InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const ProductsListScreen(title: 'Search')),
+                          );
+                        },
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle),
+                          child: const Icon(Icons.search, color: Colors.white),
+                        ),
                       ),
                     ],
                   ),

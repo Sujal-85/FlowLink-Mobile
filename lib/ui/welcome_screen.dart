@@ -12,14 +12,19 @@ class WelcomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                 const SizedBox(height: 12),
                 // Top illustration
                 AspectRatio(
@@ -41,10 +46,10 @@ class WelcomeScreen extends StatelessWidget {
                 ).animate().fadeIn(duration: 350.ms, delay: 100.ms),
                 const SizedBox(height: 8),
                 // Subtitle
-                const Text(
-                  'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor',
+                Text(
+                  'Delivering speed and reliability — powered by FlowLink.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textGrey, height: 1.45),
+                  style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), height: 1.45),
                 ).animate().fadeIn(duration: 350.ms, delay: 160.ms),
                 const SizedBox(height: 28),
                 // Buttons
@@ -68,8 +73,8 @@ class WelcomeScreen extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () => pushSlideFade(context, const LoginScreen(), begin: const Offset(0.06, 0.0)),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      side: const BorderSide(color: Colors.black, width: 1.5),
+                      foregroundColor: theme.colorScheme.onSurface,
+                      side: BorderSide(color: Theme.of(context).dividerColor, width: 1.5),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
                       textStyle: const TextStyle(letterSpacing: 0.2, fontWeight: FontWeight.w800),
                     ),
@@ -77,9 +82,12 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                 ).animate().fadeIn(duration: 300.ms, delay: 220.ms),
                 const SizedBox(height: 8),
-              ],
-            ),
-          ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

@@ -58,7 +58,7 @@ class _AssistantFabState extends State<AssistantFab> with SingleTickerProviderSt
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
-                            colors: [Color(0xFF00BFA5), Color(0xFF1E88E5)],
+                            colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),

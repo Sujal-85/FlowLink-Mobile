@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flowlink_mobile/ui/app_theme.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flowlink_mobile/services/location_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class LocationSelectScreen extends StatefulWidget {
   const LocationSelectScreen({super.key});
@@ -33,9 +34,20 @@ class _LocationSelectScreenState extends State<LocationSelectScreen> {
       });
       await _resolvePickedAddress();
     } catch (_) {
-      // Fallback to a default coordinate if permissions denied (San Francisco)
+      // Fallback: try last known position, else default to Thane, Maharashtra, India
+      try {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last != null) {
+          setState(() {
+            _picked = LatLng(last.latitude, last.longitude);
+            _loading = false;
+          });
+          await _resolvePickedAddress();
+          return;
+        }
+      } catch (_) {}
       setState(() {
-        _picked = const LatLng(37.7749, -122.4194);
+        _picked = const LatLng(19.2183, 72.9781); // Thane, Maharashtra
         _loading = false;
       });
       await _resolvePickedAddress();
@@ -149,13 +161,15 @@ class _LocationSelectScreenState extends State<LocationSelectScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(14),
-                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
+                          boxShadow: Theme.of(context).brightness == Brightness.light
+                              ? const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))]
+                              : null,
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.place_rounded, color: AppColors.greenPrimary),
+                            Icon(Icons.place_rounded, color: Theme.of(context).colorScheme.primary),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -200,20 +214,25 @@ Widget _mapPin() {
 }
 
 Widget _circleIcon({required IconData icon, VoidCallback? onTap}) {
-  return InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(24),
-    child: Container(
-      width: 40,
-      height: 40,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+  return Builder(builder: (context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          shape: BoxShape.circle,
+          boxShadow: theme.brightness == Brightness.light
+              ? const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))]
+              : null,
+        ),
+        child: Icon(icon, color: theme.colorScheme.onSurface, size: 20),
       ),
-      child: Icon(icon, color: Colors.black87, size: 20),
-    ),
-  );
+    );
+  });
 }
 
 class _LocationTile extends StatelessWidget {
@@ -226,10 +245,10 @@ class _LocationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 2),
-      leading: const Icon(Icons.location_on, color: AppColors.greenPrimary),
+      leading: Icon(Icons.location_on, color: Theme.of(context).colorScheme.primary),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(subtitle, overflow: TextOverflow.ellipsis, maxLines: 1),
-      trailing: Text(distance, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+      trailing: Text(distance, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
       onTap: () {
         // For now, just close if used anywhere.
         Navigator.of(context).pop();

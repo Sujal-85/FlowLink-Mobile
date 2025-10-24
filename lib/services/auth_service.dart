@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flowlink_mobile/services/user_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flowlink_mobile/services/user_repository.dart';
+import 'package:flowlink_mobile/services/notification_service.dart';
 
 class AuthService {
   AuthService._();
@@ -149,6 +150,14 @@ class AuthService {
       provider.setCustomParameters({'prompt': 'select_account'});
       final cred = await _auth.signInWithPopup(provider);
       _syncName(cred.user);
+      try {
+        final user = cred.user;
+        final to = user?.email ?? '';
+        final displayName = ((user?.displayName?.trim().isNotEmpty ?? false)
+                ? user!.displayName!.trim()
+                : (to.isNotEmpty ? to.split('@').first : 'there'));
+        await NotificationService.instance.sendWelcomeEmail(toEmail: to, displayName: displayName);
+      } catch (_) {}
       return cred;
     } else {
       final googleUser = await GoogleSignIn(scopes: ['email']).signIn();
@@ -162,6 +171,14 @@ class AuthService {
       );
       final cred = await _auth.signInWithCredential(credential);
       _syncName(cred.user);
+      try {
+        final user = cred.user;
+        final to = user?.email ?? '';
+        final displayName = ((user?.displayName?.trim().isNotEmpty ?? false)
+                ? user!.displayName!.trim()
+                : (to.isNotEmpty ? to.split('@').first : 'there'));
+        await NotificationService.instance.sendWelcomeEmail(toEmail: to, displayName: displayName);
+      } catch (_) {}
       return cred;
     }
   }
@@ -221,11 +238,44 @@ class AuthService {
       try {
         final linked = await _auth.currentUser!.linkWithCredential(cred);
         _syncName(linked.user);
+        try {
+          final user = linked.user;
+          final phone = user?.phoneNumber ?? '';
+          final displayName = ((user?.displayName?.trim().isNotEmpty ?? false) ? user!.displayName!.trim() : 'there');
+          await NotificationService.instance.sendWelcomeSms(phoneNumber: phone, displayName: displayName);
+        } catch (_) {}
         return linked;
       } catch (_) {}
     }
     final signed = await _auth.signInWithCredential(cred);
     _syncName(signed.user);
+    try {
+      final user = signed.user;
+      final phone = user?.phoneNumber ?? '';
+      final displayName = ((user?.displayName?.trim().isNotEmpty ?? false) ? user!.displayName!.trim() : 'there');
+      await NotificationService.instance.sendWelcomeSms(phoneNumber: phone, displayName: displayName);
+    } catch (_) {}
     return signed;
+  }
+
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    if (!_firebaseReady) {
+      throw Exception('Authentication is not configured for this build.');
+    }
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  Future<void> updatePassword({required String currentPassword, required String newPassword}) async {
+    if (!_firebaseReady) {
+      throw Exception('Authentication is not configured for this build.');
+    }
+    final u = _auth.currentUser;
+    if (u == null) throw Exception('Not signed in');
+    if (u.email != null && u.email!.isNotEmpty) {
+      final cred = EmailAuthProvider.credential(email: u.email!, password: currentPassword);
+      await u.reauthenticateWithCredential(cred);
+    }
+    await u.updatePassword(newPassword);
+    await u.reload();
   }
 }

@@ -73,60 +73,64 @@ class _CongratulationsScreenState extends State<CongratulationsScreen> with Sing
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Stack(
           children: [
-            SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 8),
-                    // Hero check icon
-                    Center(
-                      child: Container(
-                        width: 110,
-                        height: 110,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEAF6DB),
-                          shape: BoxShape.circle,
+            Align(
+              alignment: Alignment.center,
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 8),
+                      // Hero check icon
+                      Center(
+                        child: Container(
+                          width: 110,
+                          height: 110,
+                          decoration: BoxDecoration(
+                            color: theme.brightness == Brightness.dark ? theme.colorScheme.primary.withOpacity(0.18) : const Color(0xFFEAF6DB),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.celebration, size: 56, color: AppColors.greenDark),
                         ),
-                        child: const Icon(Icons.celebration, size: 56, color: AppColors.greenDark),
-                      ),
-                    ).animate().fadeIn(duration: 350.ms).scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOut),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Congratulations',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-                    ).animate().fadeIn(duration: 300.ms, delay: 80.ms).moveY(begin: 6, end: 0),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.displayName != null && widget.displayName!.trim().isNotEmpty
-                          ? '${widget.displayName}, your account has been created successfully.'
-                          : 'Your account has been created successfully.',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textGrey, height: 1.45),
-                    ).animate().fadeIn(duration: 300.ms, delay: 140.ms),
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (!context.mounted) return;
-                            Navigator.of(context).pushReplacement(
-                              SlideFadeRoute(page: const LocationIntroScreen(), begin: const Offset(0.06, 0.0)),
-                            );
-                          });
-                        },
-                        child: const Text('Continue'),
-                      ),
-                    ).animate().fadeIn(duration: 300.ms, delay: 180.ms),
-                    const SizedBox(height: 8),
-                  ],
+                      ).animate().fadeIn(duration: 350.ms).scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOut),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Congratulations',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                      ).animate().fadeIn(duration: 300.ms, delay: 80.ms).moveY(begin: 6, end: 0),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.displayName != null && widget.displayName!.trim().isNotEmpty
+                            ? '${widget.displayName}, your account has been created successfully.'
+                            : 'Your account has been created successfully.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), height: 1.45),
+                      ).animate().fadeIn(duration: 300.ms, delay: 140.ms),
+                      const SizedBox(height: 28),
+                      SizedBox(
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!context.mounted) return;
+                              Navigator.of(context).pushReplacement(
+                                SlideFadeRoute(page: const LocationIntroScreen(), begin: const Offset(0.06, 0.0)),
+                              );
+                            });
+                          },
+                          child: const Text('Continue'),
+                        ),
+                      ).animate().fadeIn(duration: 300.ms, delay: 180.ms),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
                 ),
               ),
             ),

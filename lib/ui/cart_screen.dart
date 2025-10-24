@@ -538,7 +538,7 @@ class _CartScreenState extends State<CartScreen> {
     final r = Responsive.of(context);
     final bool dense = r.isSmall;
     return Container(
-      padding: EdgeInsets.fromLTRB(12, dense ? 6 : 10, 12, dense ? 10 : 16),
+      padding: EdgeInsets.fromLTRB(12, dense ? 4 : 8, 12, dense ? 8 : 12),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         boxShadow: const [
@@ -551,13 +551,15 @@ class _CartScreenState extends State<CartScreen> {
           final original = entries.fold<double>(0.0, (s, e) => s + e.item.price * e.qty);
           final effective = entries.fold<double>(0.0, (s, e) => s + e.lineTotal);
           final savings = (original - effective).clamp(0.0, double.infinity);
+          final delivery = effective >= 150 ? 0.0 : 49.0;
+          final toPay = effective + delivery;
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Summary row
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: dense ? 6 : 8),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: dense ? 4 : 6),
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark ? Colors.white12 : AppColors.blueSurface,
                   borderRadius: BorderRadius.circular(12),
@@ -565,7 +567,7 @@ class _CartScreenState extends State<CartScreen> {
                 child: Row(
                   children: [
                     Text(
-                      'To Pay:  ₹${effective.toStringAsFixed(0)}',
+                      'To Pay:  ₹${toPay.toStringAsFixed(0)}',
                       style: TextStyle(fontWeight: FontWeight.w900, fontSize: dense ? 14 : 16),
                     ),
                     const SizedBox(width: 8),
@@ -573,16 +575,16 @@ class _CartScreenState extends State<CartScreen> {
                       Text('₹${original.toStringAsFixed(0)}', style: const TextStyle(decoration: TextDecoration.lineThrough, color: _textGrey)),
                     const Spacer(),
                     TextButton(
-                      onPressed: () => _showBillSheet(original: original, total: effective, savings: savings),
+                      onPressed: () => _showBillSheet(original: original, total: effective, savings: savings, delivery: delivery),
                       child: Text(dense ? 'Bill' : 'View Detailed Bill'),
                     )
                   ],
                 ),
               ),
-              SizedBox(height: dense ? 6 : 8),
+              SizedBox(height: dense ? 4 : 6),
               // Delivery info row
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: dense ? 6 : 10),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: dense ? 4 : 8),
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(12),
@@ -611,19 +613,19 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                     const SizedBox(width: 10),
                     Container(
-                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)),
-                      padding: EdgeInsets.symmetric(horizontal: dense ? 8 : 10, vertical: dense ? 4 : 6),
-                      child: Text('10 mins', style: TextStyle(fontWeight: FontWeight.w800, fontSize: dense ? 12 : 14, color: Theme.of(context).colorScheme.onPrimaryContainer)),
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(18)),
+                      padding: EdgeInsets.symmetric(horizontal: dense ? 6 : 8, vertical: dense ? 2 : 4),
+                      child: Text('10 mins', style: TextStyle(fontWeight: FontWeight.w800, fontSize: dense ? 11 : 13, color: Theme.of(context).colorScheme.onPrimaryContainer)),
                     ),
                     const SizedBox(width: 8),
                     Icon(Icons.send_rounded, color: Theme.of(context).colorScheme.secondary),
               ],
               ),
               ),
-              SizedBox(height: dense ? 8 : 10),
+              SizedBox(height: dense ? 6 : 8),
               SizedBox(
                 width: double.infinity,
-                height: dense ? 44 : 52,
+                height: dense ? 40 : 46,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
@@ -631,7 +633,7 @@ class _CartScreenState extends State<CartScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     textStyle: TextStyle(fontWeight: FontWeight.w800, fontSize: dense ? 13 : 15),
                   ),
-                  onPressed: entries.isEmpty ? null : () => _onCheckoutPressed(effective),
+                  onPressed: entries.isEmpty ? null : () => _onCheckoutPressed(toPay),
                   child: const Text('Proceed to Pay'),
                 ),
               ),
@@ -642,7 +644,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Future<void> _showBillSheet({required double original, required double total, required double savings}) async {
+  Future<void> _showBillSheet({required double original, required double total, required double savings, required double delivery}) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: false,
@@ -658,9 +660,9 @@ class _CartScreenState extends State<CartScreen> {
               const SizedBox(height: 12),
               _billRow('Items total', '₹${original.toStringAsFixed(0)}'),
               _billRow('Savings', '- ₹${savings.toStringAsFixed(0)}', fg: Colors.green.shade700),
-              _billRow('Delivery', 'Free'),
+              _billRow('Delivery', delivery <= 0 ? 'Free' : '₹${delivery.toStringAsFixed(0)}'),
               const Divider(height: 24),
-              _billRow('To Pay', '₹${total.toStringAsFixed(0)}', bold: true),
+              _billRow('To Pay', '₹${(total + delivery).toStringAsFixed(0)}', bold: true),
               const SizedBox(height: 8),
             ],
           ),

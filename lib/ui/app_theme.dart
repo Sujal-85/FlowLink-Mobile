@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
@@ -252,11 +253,27 @@ class ProductItem {
 class DummyProductsLoader {
   static const String _assetPath = 'assets/images/csvjson.json';
   static List<ProductItem>? _cache;
+  static bool _cacheValidated = false;
 
   /// Loads all products from the JSON asset. Results are cached in-memory.
-  static Future<List<ProductItem>> loadAll({int? limit}) async {
+  /// If [validateImages] is true, only items whose image URLs are reachable
+  /// (and are an image/* content-type) will be returned. If [bustCache] is
+  /// true, the cache is cleared and data is reloaded from assets.
+  static Future<List<ProductItem>> loadAll({int? limit, bool validateImages = false, bool bustCache = false}) async {
+    if (bustCache) _cache = null;
     if (_cache != null && _cache!.isNotEmpty) {
-      final list = _cache!;
+      var list = _cache!;
+      if (validateImages && !_cacheValidated) {
+        final validated = await _filterReachableImages(list);
+        // Fallback: if validation eliminates most items (e.g., offline/CORS), keep unvalidated list
+        if (validated.length >= 5) {
+          list = validated;
+          _cache = list;
+          _cacheValidated = true;
+        } else {
+          _cacheValidated = false;
+        }
+      }
       if (limit != null && limit > 0 && limit < list.length) {
         return list.sublist(0, limit);
       }
@@ -267,13 +284,25 @@ class DummyProductsLoader {
       final raw = await rootBundle.loadString(_assetPath);
       final data = jsonDecode(raw);
       if (data is List) {
-        final items = <ProductItem>[];
+        var items = <ProductItem>[];
         for (final e in data) {
           if (e is Map<String, dynamic>) {
             items.add(ProductItem.fromJson(e));
           } else if (e is Map) {
             items.add(ProductItem.fromJson(e.cast<String, dynamic>()));
           }
+        }
+        items = items.where((it) => _looksLikeImageUrl(it.imageUrl)).toList();
+        if (validateImages) {
+          final validated = await _filterReachableImages(items);
+          if (validated.length >= 5) {
+            items = validated;
+            _cacheValidated = true;
+          } else {
+            _cacheValidated = false; // keep unvalidated items to avoid empty UI
+          }
+        } else {
+          _cacheValidated = false;
         }
         _cache = items;
         if (limit != null && limit > 0 && limit < items.length) {
@@ -286,5 +315,56 @@ class DummyProductsLoader {
       // If anything goes wrong, return empty list.
       return const <ProductItem>[];
     }
+  }
+
+  static bool _looksLikeImageUrl(String url) {
+    final u = url.trim().toLowerCase();
+    if (u.isEmpty) return false;
+    if (!(u.startsWith('http://') || u.startsWith('https://'))) return false;
+    // Allow common image types; if no extension present, still allow.
+    const exts = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'];
+    final hasExt = exts.any((e) => u.contains(e));
+    return hasExt || Uri.tryParse(u)?.hasAbsolutePath == true;
+  }
+
+  static Future<List<ProductItem>> _filterReachableImages(List<ProductItem> items) async {
+    final out = <ProductItem>[];
+    const concurrency = 8;
+    var i = 0;
+    Future<void> worker() async {
+      while (true) {
+        late final int index;
+        if (i >= items.length) break;
+        index = i;
+        i += 1;
+        final p = items[index];
+        final ok = await _isImageReachable(p.imageUrl);
+        if (ok) out.add(p);
+      }
+    }
+    final tasks = List.generate(concurrency, (_) => worker());
+    await Future.wait(tasks);
+    return out;
+  }
+
+  static Future<bool> _isImageReachable(String url) async {
+    try {
+      final testUrl = kIsWeb ? resolveImageUrl(url) : url;
+      final uri = Uri.tryParse(testUrl);
+      if (uri == null) return false;
+      final head = await http.head(uri).timeout(const Duration(seconds: 5));
+      if (head.statusCode >= 200 && head.statusCode < 400) {
+        final ct = head.headers['content-type'] ?? '';
+        if (ct.startsWith('image/')) return true;
+      }
+      if (head.statusCode == 405 || head.statusCode == 403) {
+        final get = await http.get(uri, headers: const {'Range': 'bytes=0-0'}).timeout(const Duration(seconds: 5));
+        if (get.statusCode >= 200 && get.statusCode < 400) {
+          final ct = get.headers['content-type'] ?? '';
+          if (ct.startsWith('image/')) return true;
+        }
+      }
+    } catch (_) {}
+    return false;
   }
 }

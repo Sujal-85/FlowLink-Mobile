@@ -12,6 +12,8 @@ import 'package:url_launcher/url_launcher_string.dart';
 import 'package:flowlink_mobile/services/user_service.dart';
 import 'package:flowlink_mobile/ui/app_theme.dart';
 import 'package:flowlink_mobile/widgets/loading_overlay.dart';
+import 'package:flowlink_mobile/ui/terms_screen.dart';
+import 'package:flowlink_mobile/ui/privacy_screen.dart';
 
 // Brand palette
 const kBrandGreen = Color(0xFF27AE60);  // Fresh Green
@@ -160,16 +162,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // Notifications
           _sectionTitle('Notifications'),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text('Push Notifications', style: TextStyle(color: on)),
-            value: _push,
-            onChanged: (v) {
-              setState(() => _push = v);
-              _savePref('notif_push', v);
-            },
-            activeThumbColor: kBrandGreen,
-          ),
+          // SwitchListTile(
+          //   contentPadding: EdgeInsets.zero,
+          //   title: Text('Push Notifications', style: TextStyle(color: on)),
+          //   value: _push,
+          //   onChanged: (v) {
+          //     setState(() => _push = v);
+          //     _savePref('notif_push', v);
+          //   },
+          //   activeThumbColor: kBrandGreen,
+          // ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: Text('Email Updates', style: TextStyle(color: on)),
@@ -191,37 +193,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
             activeThumbColor: kBrandGreen,
           ),
 
-          const SizedBox(height: 20),
+          // const SizedBox(height: 20),
 
-          // Privacy
-          _sectionTitle('Privacy'),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text('Share Analytics', style: TextStyle(color: on)),
-            value: _analytics,
-            onChanged: (v) {
-              setState(() => _analytics = v);
-              _savePref('privacy_analytics', v);
-            },
-            activeThumbColor: kBrandGreen,
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text('Personalized Offers', style: TextStyle(color: on)),
-            value: _ads,
-            onChanged: (v) {
-              setState(() => _ads = v);
-              _savePref('privacy_personalized_ads', v);
-            },
-            activeThumbColor: kBrandGreen,
-          ),
+          // // Privacy
+          // _sectionTitle('Privacy'),
+          // SwitchListTile(
+          //   contentPadding: EdgeInsets.zero,
+          //   title: Text('Share Analytics', style: TextStyle(color: on)),
+          //   value: _analytics,
+          //   onChanged: (v) {
+          //     setState(() => _analytics = v);
+          //     _savePref('privacy_analytics', v);
+          //   },
+          //   activeThumbColor: kBrandGreen,
+          // ),
+          // SwitchListTile(
+          //   contentPadding: EdgeInsets.zero,
+          //   title: Text('Personalized Offers', style: TextStyle(color: on)),
+          //   value: _ads,
+          //   onChanged: (v) {
+          //     setState(() => _ads = v);
+          //     _savePref('privacy_personalized_ads', v);
+          //   },
+          //   activeThumbColor: kBrandGreen,
+          // ),
 
-          const SizedBox(height: 20),
+          // const SizedBox(height: 20),
 
-          // General
-          _sectionTitle('General'),
-          _tile(context, Icons.language, 'Language', onTap: () => _showLanguageSheet(context)),
-          _tile(context, Icons.delete_outline, 'Clear Cache', trailing: 'App data', onTap: () => _clearCache(context)),
+          // // General
+          // _sectionTitle('General'),
+          // _tile(context, Icons.language, 'Language', onTap: () => _showLanguageSheet(context)),
+          // _tile(context, Icons.delete_outline, 'Clear Cache', trailing: 'App data', onTap: () => _clearCache(context)),
 
           const SizedBox(height: 20),
           // Appearance / Theme
@@ -247,8 +249,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 20),
           _sectionTitle('About'),
           _tile(context, Icons.info_outline, 'Version', trailing: 'v1.0.0'),
-          _tile(context, Icons.description_outlined, 'Terms of Service', onTap: () => launchUrlString('https://www.example.com/terms')),
-          _tile(context, Icons.privacy_tip_outlined, 'Privacy Policy', onTap: () => launchUrlString('https://www.example.com/privacy')),
+          _tile(context, Icons.description_outlined, 'Terms of Service', onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
+          }),
+          _tile(context, Icons.privacy_tip_outlined, 'Privacy Policy', onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyScreen()));
+          }),
 
           const SizedBox(height: 20),
           _sectionTitle('Account'),
@@ -264,12 +270,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _tile(context, Icons.delete_forever_outlined, 'Delete Account', onTap: () async {
             final ok = await showDialog<bool>(
               context: context,
-              builder: (_) => AlertDialog(
+              builder: (dialogCtx) => AlertDialog(
                 title: Text('Delete account?', style: TextStyle(color: on, fontWeight: FontWeight.w700)),
                 content: Text('This is a demo action and will only clear local data.', style: TextStyle(color: on.withOpacity(0.8))),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: TextStyle(color: on))),
-                  TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Delete', style: TextStyle(color: Colors.red))),
+                  TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: Text('Cancel', style: TextStyle(color: on))),
+                  TextButton(onPressed: () => Navigator.pop(dialogCtx, true), child: Text('Delete', style: TextStyle(color: Colors.red))),
                 ],
               ),
             );

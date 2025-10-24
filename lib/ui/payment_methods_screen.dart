@@ -19,6 +19,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   final _pan = TextEditingController();
   final _exp = TextEditingController(); // MM/YY
   final _holder = TextEditingController();
+  final _cvv = TextEditingController();
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     _pan.dispose();
     _exp.dispose();
     _holder.dispose();
+    _cvv.dispose();
     super.dispose();
   }
 
@@ -167,22 +169,48 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         ...List.generate(_cards.length, (i) {
           final c = _cards[i];
           return Padding(
-            padding: const EdgeInsets.only(bottom: 10.0),
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              elevation: 1,
-              child: ListTile(
-                leading: const Icon(Icons.credit_card),
-                title: Text(c.maskedLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: c.holder != null ? Text(c.holder!) : null,
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () async {
-                    await PaymentRepository.instance.removeCard(c.id);
-                    await _refresh();
-                  },
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: Container(
+              height: 120,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(
+                  colors: [AppColors.greenPrimary, Color(0xFF0F4D42)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                boxShadow: Theme.of(context).brightness == Brightness.light
+                    ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))]
+                    : null,
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(c.brand, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.white70),
+                        onPressed: () async {
+                          await PaymentRepository.instance.removeCard(c.id);
+                          await _refresh();
+                        },
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Text('•••• ${c.last4}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 1.5)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text('VALID THRU  ${c.expMonth.toString().padLeft(2, '0')}/${(c.expYear % 100).toString().padLeft(2, '0')}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      if (c.holder != null) Flexible(child: Text(c.holder!.toUpperCase(), overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700))),
+                    ],
+                  ),
+                ],
               ),
             ),
           );
@@ -217,6 +245,10 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               title: const Text('Enter Manually'),
               onTap: () {
                 Navigator.pop(ctx);
+                _pan.text = '';
+                _exp.text = '';
+                _holder.text = '';
+                _cvv.text = '';
                 _showManualEntrySheet();
               },
             ),
@@ -234,10 +266,13 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         validCardsToScanBeforeFinishingScan: 1,
       );
       final details = await CardScanner.scanCard(scanOptions: options);
-      if (details == null) return;
+      if (details == null) {
+        await _showManualEntrySheet();
+        return;
+      }
       final rawNumber = (details.cardNumber ?? '').replaceAll(RegExp(r'[^0-9]'), '');
       if (rawNumber.isEmpty) {
-        await _scanNotAvailableDialog();
+        await _showManualEntrySheet();
         return;
       }
       // Prefill fields and open manual confirmation sheet
@@ -247,7 +282,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       _holder.text = (details.cardHolderName ?? '').trim();
       await _showManualEntrySheet();
     } catch (_) {
-      await _scanNotAvailableDialog();
+      await _showManualEntrySheet();
     }
   }
 
@@ -267,9 +302,6 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   Future<void> _showAddCardSheet() => _onScanCard();
 
   Future<void> _showManualEntrySheet() async {
-    _pan.text = '';
-    _exp.text = '';
-    _holder.text = '';
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -284,6 +316,47 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Add New Card', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                const SizedBox(height: 12),
+                Container(
+                  height: 160,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(
+                      colors: [AppColors.greenPrimary, Color(0xFF0F4D42)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: Theme.of(context).brightness == Brightness.light
+                        ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: Offset(0, 4))]
+                        : null,
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: Text(
+                          _brandFor(_pan.text),
+                          style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        _pan.text.isEmpty ? '•••• •••• •••• ••••' : _pan.text,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 1.5),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text('VALID THRU  ${_exp.text.isEmpty ? 'MM/YY' : _exp.text}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+                          const Spacer(),
+                          Flexible(child: Text((_holder.text.isEmpty ? 'CARD HOLDER' : _holder.text).toUpperCase(), overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700))),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _pan,
@@ -304,12 +377,20 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
-                      controller: _holder,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(hintText: 'Card holder (optional)'),
+                      controller: _cvv,
+                      keyboardType: TextInputType.number,
+                      obscureText: true,
+                      decoration: const InputDecoration(hintText: 'CVV'),
                     ),
                   ),
                 ]),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _holder,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(hintText: 'Card holder (optional)'),
+                  onChanged: (_) => setState(() {}),
+                ),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
@@ -355,6 +436,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       final sel = newText.length;
       _pan.value = TextEditingValue(text: newText, selection: TextSelection.collapsed(offset: sel));
     }
+    setState(() {});
   }
 
   String _groupPan(String digits) {
@@ -375,6 +457,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     if (d != _exp.text) {
       _exp.value = TextEditingValue(text: d, selection: TextSelection.collapsed(offset: d.length));
     }
+    setState(() {});
   }
 
   String _normalizeExpiry(String exp) {
@@ -407,4 +490,14 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   String _digitsOnly(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
+
+  String _brandFor(String panGrouped) {
+    final d = _digitsOnly(panGrouped);
+    if (RegExp(r'^4').hasMatch(d)) return 'Visa';
+    if (RegExp(r'^(5[1-5]|2[2-7])').hasMatch(d)) return 'Mastercard';
+    if (RegExp(r'^3[47]').hasMatch(d)) return 'Amex';
+    if (RegExp(r'^(6011|65|64[4-9])').hasMatch(d)) return 'Discover';
+    if (RegExp(r'^35').hasMatch(d)) return 'JCB';
+    return 'Card';
+  }
 }

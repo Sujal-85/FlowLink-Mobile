@@ -27,13 +27,15 @@ class InfiniteProductsStrip extends StatefulWidget {
   State<InfiniteProductsStrip> createState() => _InfiniteProductsStripState();
 }
 
-class _InfiniteProductsStripState extends State<InfiniteProductsStrip> with SingleTickerProviderStateMixin {
+class _InfiniteProductsStripState extends State<InfiniteProductsStrip>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: widget.duration)..repeat();
+    _controller = AnimationController(vsync: this, duration: widget.duration)
+      ..repeat();
   }
 
   @override
@@ -59,7 +61,9 @@ class _InfiniteProductsStripState extends State<InfiniteProductsStrip> with Sing
                   width: widget.itemSize,
                   height: widget.itemSize,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFFAE6),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white10
+                        : const Color(0xFFEFFAE6),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   clipBehavior: Clip.antiAlias,
@@ -102,8 +106,14 @@ class _InfiniteProductsStripState extends State<InfiniteProductsStrip> with Sing
                 final secondX = widget.reverse ? x - travel : x + travel;
                 return Stack(
                   children: [
-                    Transform.translate(offset: Offset(firstX, 0), child: _buildRow(imgs)),
-                    Transform.translate(offset: Offset(secondX, 0), child: _buildRow(imgs)),
+                    Transform.translate(
+                      offset: Offset(firstX, 0),
+                      child: _buildRow(imgs),
+                    ),
+                    Transform.translate(
+                      offset: Offset(secondX, 0),
+                      child: _buildRow(imgs),
+                    ),
                   ],
                 );
               },
@@ -123,11 +133,7 @@ class AnimatedProductRows extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
     double base = (w / 375.0) * 68.0;
-    final double tile = base < 56.0
-        ? 56.0
-        : (base > 80.0
-            ? 80.0
-            : base);
+    final double tile = base < 56.0 ? 56.0 : (base > 80.0 ? 80.0 : base);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -135,20 +141,38 @@ class AnimatedProductRows extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(24),
           child: Container(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Stack(
               children: [
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    InfiniteProductsStrip(images: images, reverse: false, itemSize: tile, duration: const Duration(seconds: 16)),
+                    InfiniteProductsStrip(
+                      images: images,
+                      reverse: false,
+                      itemSize: tile,
+                      duration: const Duration(seconds: 16),
+                    ),
                     const SizedBox(height: 8),
-                    InfiniteProductsStrip(images: images.reversed.toList(), reverse: true, itemSize: tile, duration: const Duration(seconds: 18)),
+                    InfiniteProductsStrip(
+                      images: images.reversed.toList(),
+                      reverse: true,
+                      itemSize: tile,
+                      duration: const Duration(seconds: 18),
+                    ),
                     const SizedBox(height: 8),
                     ImageFiltered(
-                      imageFilter: ui.ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
-                      child: InfiniteProductsStrip(images: images, reverse: false, itemSize: tile, duration: const Duration(seconds: 20)),
+                      imageFilter: ui.ImageFilter.blur(
+                        sigmaX: 1.2,
+                        sigmaY: 1.2,
+                      ),
+                      child: InfiniteProductsStrip(
+                        images: images,
+                        reverse: false,
+                        itemSize: tile,
+                        duration: const Duration(seconds: 20),
+                      ),
                     ),
                   ],
                 ),
@@ -159,11 +183,14 @@ class AnimatedProductRows extends StatelessWidget {
                   child: IgnorePointer(
                     child: Container(
                       height: 56,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Color(0x00FFFFFF), Colors.white],
+                          colors: [
+                            Theme.of(context).cardColor.withOpacity(0.0),
+                            Theme.of(context).cardColor,
+                          ],
                         ),
                       ),
                     ),
@@ -253,8 +280,17 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                     child: Container(
                       width: 40,
                       height: 40,
-                      decoration: const BoxDecoration(color: AppColors.lightGrey, shape: BoxShape.circle),
-                      child: const Icon(Icons.arrow_back_ios_new, size: 18),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white10
+                            : AppColors.lightGrey,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.arrow_back_ios_new,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                   ),
                 ],
@@ -275,11 +311,11 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                   'assets/products/toor-dal.jpeg',
                 ],
               ).animate().fadeIn(duration: 500.ms, curve: Curves.easeOut),
-              const SizedBox(height: 16),
+              const SizedBox(height: 32),
               Center(
                 child: Image.asset(
                   'assets/images/FlowLink-logo-text.png',
-                  height: 36,
+                  height: 110,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -296,18 +332,41 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                 child: RichText(
                   textAlign: TextAlign.center,
                   text: TextSpan(
-                    style: const TextStyle(color: AppColors.textGrey, fontWeight: FontWeight.w600, fontSize: 16),
+                    style: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.7),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
                     children: [
                       TextSpan(
                         text: 'Log In',
-                        style: const TextStyle(color: AppColors.greenPrimary, fontWeight: FontWeight.w700),
-                        recognizer: TapGestureRecognizer()..onTap = () => Navigator.of(context).pushNamed('/login'),
+                        style: const TextStyle(
+                          color: AppColors.greenPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () =>
+                              Navigator.of(context).pushNamed('/login'),
                       ),
-                      const TextSpan(text: '  or  '),
+                      TextSpan(
+                        text: '  or  ',
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
                       TextSpan(
                         text: 'Sign Up',
-                        style: const TextStyle(color: AppColors.greenPrimary, fontWeight: FontWeight.w700),
-                        recognizer: TapGestureRecognizer()..onTap = () => Navigator.of(context).pushNamed('/signup'),
+                        style: const TextStyle(
+                          color: AppColors.greenPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () =>
+                              Navigator.of(context).pushNamed('/signup'),
                       ),
                     ],
                   ),
@@ -315,42 +374,63 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
               ),
               const SizedBox(height: 20),
               Container(
-                decoration: BoxDecoration(
-                  color: Color(0xFFFAFAFA),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 90,
-                        child: TextFormField(
-                          controller: _countryCtrl,
-                          keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(hintText: '+91'),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Code' : null,
-                        ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow:
+                          Theme.of(context).brightness == Brightness.light
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.06),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Form(
+                      key: _formKey,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 90,
+                            child: TextFormField(
+                              controller: _countryCtrl,
+                              keyboardType: TextInputType.phone,
+                              decoration: const InputDecoration(
+                                hintText: '+91',
+                              ),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? 'Code'
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _phoneCtrl,
+                              keyboardType: TextInputType.phone,
+                              decoration: const InputDecoration(
+                                hintText: 'Enter Phone number',
+                              ),
+                              validator: (v) {
+                                final n = (v ?? '').replaceAll(
+                                  RegExp(r'[^0-9]'),
+                                  '',
+                                );
+                                if (n.length < 7) return 'Enter valid number';
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _phoneCtrl,
-                          keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(hintText: 'Enter Phone number'),
-                          validator: (v) {
-                            final n = (v ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-                            if (n.length < 7) return 'Enter valid number';
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ).animate().fadeIn(duration: 250.ms).moveY(begin: 8, end: 0, curve: Curves.easeOut),
+                    ),
+                  )
+                  .animate()
+                  .fadeIn(duration: 250.ms)
+                  .moveY(begin: 8, end: 0, curve: Curves.easeOut),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -358,7 +438,14 @@ class _PhoneInputScreenState extends State<PhoneInputScreen> {
                 child: ElevatedButton(
                   onPressed: _sending ? null : _sendCode,
                   child: _sending
-                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Text('Send OTP'),
                 ),
               ).animate().fadeIn(duration: 250.ms, delay: 120.ms),

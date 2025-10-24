@@ -82,9 +82,9 @@ class _LocationIntroScreenState extends State<LocationIntroScreen> {
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 "Let's find your unforgettable event. Choose a location below to get started.",
-                style: TextStyle(color: AppColors.textGrey, height: 1.4),
+                style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), height: 1.4),
               ),
               const SizedBox(height: 20),
 
@@ -144,7 +144,7 @@ class _LocationIntroScreenState extends State<LocationIntroScreen> {
                     children: [
                       if (_loading || _current == null)
                         Container(
-                          color: Colors.grey.shade100,
+                          color: theme.cardColor,
                           child: const Center(child: CircularProgressIndicator()),
                         )
                       else
@@ -172,17 +172,21 @@ class _LocationIntroScreenState extends State<LocationIntroScreen> {
                         left: 16,
                         right: 16,
                         top: 16,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
-                          ),
-                          child: Text(
-                            (_address == null || _address!.isEmpty) ? 'Select a location' : _address!,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis,
+                        child: IgnorePointer(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: theme.cardColor,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: theme.brightness == Brightness.light
+                                  ? const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))]
+                                  : null,
+                            ),
+                            child: Text(
+                              (_address == null || _address!.isEmpty) ? 'Select a location' : _address!,
+                              style: TextStyle(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                       ),

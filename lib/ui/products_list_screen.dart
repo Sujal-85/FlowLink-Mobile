@@ -35,6 +35,9 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
   @override
   Widget build(BuildContext context) {
     final r = Responsive.of(context);
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final subOn = onSurface.withOpacity(0.6);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -45,16 +48,16 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
             padding: EdgeInsets.fromLTRB(r.scale(16), r.scale(12), r.scale(16), r.scale(8)),
             child: TextField(
               controller: _search,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search products',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: Icon(Icons.search, color: theme.brightness == Brightness.dark ? Colors.white70 : null),
               ),
               onChanged: (_) => setState(() {}),
             ),
           ),
           Expanded(
             child: FutureBuilder<List<ProductItem>>(
-              future: DummyProductsLoader.loadAll(),
+              future: DummyProductsLoader.loadAll(validateImages: false, bustCache: true),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -122,6 +125,9 @@ class _ProductTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = Responsive.of(context);
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final subOn = onSurface.withOpacity(0.6);
     final hasDiscount = product.discountPrice > 0 && product.discountPrice < product.price;
     final double newPrice = hasDiscount ? product.discountPrice : product.price;
     final double oldPrice = product.price;
@@ -135,7 +141,7 @@ class _ProductTile extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
         ),
@@ -158,8 +164,8 @@ class _ProductTile extends StatelessWidget {
                         ),
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stack) => Container(
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.broken_image, color: Colors.grey),
+                          color: theme.brightness == Brightness.dark ? Colors.white10 : Colors.grey.shade200,
+                          child: Icon(Icons.broken_image, color: subOn),
                         ),
                       ),
                     ),
@@ -196,19 +202,19 @@ class _ProductTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w800, fontSize: r.sp(14))),
+                    Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w800, fontSize: r.sp(14), color: onSurface)),
                     SizedBox(height: r.scale(2)),
-                    Text(product.brand, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.black54, fontSize: r.sp(12))),
+                    Text(product.brand, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: subOn, fontSize: r.sp(12))),
                     SizedBox(height: r.scale(2)),
-                    Text(product.quantity, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.black54, fontSize: r.sp(12))),
+                    Text(product.quantity, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: subOn, fontSize: r.sp(12))),
                     SizedBox(height: r.scale(8)),
                     Row(
                       children: [
                         if (hasDiscount) ...[
-                          Text('₹${oldPrice.toStringAsFixed(0)}', style: TextStyle(color: Colors.black54, fontSize: r.sp(12), decoration: TextDecoration.lineThrough)),
+                          Text('₹${oldPrice.toStringAsFixed(0)}', style: TextStyle(color: subOn, fontSize: r.sp(12), decoration: TextDecoration.lineThrough)),
                           SizedBox(width: r.scale(6)),
                         ],
-                        Text('₹${newPrice.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.w900, fontSize: r.sp(16))),
+                        Text('₹${newPrice.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.w900, fontSize: r.sp(16), color: onSurface)),
                       ],
                     ),
                     SizedBox(height: r.scale(6)),
@@ -241,8 +247,8 @@ class _ProductTile extends StatelessWidget {
                               icon: const Icon(Icons.add),
                               label: const Text('Add'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFC8F26A),
-                                foregroundColor: Colors.black,
+                                backgroundColor: AppColors.greenPrimary,
+                                foregroundColor: Colors.white,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 padding: EdgeInsets.symmetric(vertical: r.scale(10)),
@@ -253,12 +259,15 @@ class _ProductTile extends StatelessWidget {
                         }
                         return Container(
                           height: r.scale(36),
-                          decoration: BoxDecoration(color: const Color(0xFFF4F6F8), borderRadius: BorderRadius.circular(12)),
+                          decoration: BoxDecoration(
+                            color: theme.brightness == Brightness.dark ? Colors.white10 : const Color(0xFFF4F6F8),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               _QtyBtn(icon: Icons.remove, onTap: () => CartService.instance.decrement(product)),
-                              Text('$qty', style: TextStyle(fontWeight: FontWeight.w800, fontSize: r.sp(14))),
+                              Text('$qty', style: TextStyle(fontWeight: FontWeight.w800, fontSize: r.sp(14), color: onSurface)),
                               _QtyBtn(icon: Icons.add, onTap: () => CartService.instance.add(product)),
                             ],
                           ),
@@ -284,8 +293,9 @@ class _FavButtonSmall extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = Responsive.of(context);
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       shape: const CircleBorder(),
       elevation: 1,
       shadowColor: Colors.black.withOpacity(0.08),
@@ -297,7 +307,7 @@ class _FavButtonSmall extends StatelessWidget {
           child: Icon(
             isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
             size: r.scale(20),
-            color: isFav ? Colors.redAccent : Colors.black87,
+            color: isFav ? Colors.redAccent : onSurface,
           ),
         ),
       ),

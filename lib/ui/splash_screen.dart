@@ -71,6 +71,7 @@ void initState() {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: SafeArea(
         child: Stack(
@@ -86,42 +87,44 @@ void initState() {
                      child: ScaleTransition(
                        scale: _logoScale,
                        child: Image.asset(
-                         'assets/images/flowlink-logo-black.png',
-                         width: 120,
-                         height: 120,
-                         fit: BoxFit.contain,
-                       ),
-                     ),
-                   ),
-                   const SizedBox(height: 16),
-                   // Animated title + tagline
-                   FadeTransition(
-                     opacity: _textOpacity,
-                     child: SlideTransition(
-                       position: _textSlide,
-                       child: Column(
-                         children: [
-                           Text(
-                             'FlowLink',
-                             style: GoogleFonts.mate(
-                               fontSize: 32,
-                               fontWeight: FontWeight.w700,
-                               color: Colors.black,
-                             ),
-                           ),
-                           const SizedBox(height: 8),
-                           const Text(
-                             'Everyday Needs for You',
-                             textAlign: TextAlign.center,
-                             style: TextStyle(
-                               fontSize: 16,
-                               color: Colors.black54,
-                             ),
-                           ),
-                         ],
-                       ),
-                     ),
-                   ),
+                        isDark
+                            ? 'assets/images/flowlink-logo-white.png'
+                            : 'assets/images/flowlink-logo-black.png',
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Animated title + tagline
+                  FadeTransition(
+                    opacity: _textOpacity,
+                    child: SlideTransition(
+                      position: _textSlide,
+                      child: Column(
+                        children: [
+                          Text(
+                            'FlowLink',
+                            style: GoogleFonts.mate(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Everyday Needs for You',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                  ],
                ),
              ),
@@ -130,12 +133,12 @@ void initState() {
                bottom: 20,
                left: 0,
                right: 0,
-               child: const Text(
+               child: Text(
                  'Version 1.0.2',
                  textAlign: TextAlign.center,
                  style: TextStyle(
                    fontSize: 14,
-                   color: Colors.black54,
+                   color: isDark ? Colors.white38 : Colors.black54,
                  ),
                ),
              ),

@@ -69,7 +69,7 @@ class MyApp extends StatelessWidget {
             );
             return themedChild;
           },
-          home: const SplashScreen(),
+          home: const MainTabsScreen(),
           routes: {
             '/home': (_) => const MainTabsScreen(),
             '/orders': (_) => const OrdersListScreen(),
