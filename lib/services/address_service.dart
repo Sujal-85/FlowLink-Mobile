@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class Address {
   final String name;
   final String mobile;
+  final String? altMobile;
+  final String? email;
   final String pincode;
   final String city;
   final String state;
@@ -13,10 +15,15 @@ class Address {
   final double? lat;
   final double? lng;
   final String? addressLine;
+  final String? addressLine2;
+  final String? instructions;
+  final String? type; // e.g., home, work, other
 
   const Address({
     required this.name,
     required this.mobile,
+    this.altMobile,
+    this.email,
     required this.pincode,
     required this.city,
     required this.state,
@@ -25,11 +32,16 @@ class Address {
     this.lat,
     this.lng,
     this.addressLine,
+    this.addressLine2,
+    this.instructions,
+    this.type,
   });
 
   Address copyWith({
     String? name,
     String? mobile,
+    String? altMobile,
+    String? email,
     String? pincode,
     String? city,
     String? state,
@@ -38,9 +50,14 @@ class Address {
     double? lat,
     double? lng,
     String? addressLine,
+    String? addressLine2,
+    String? instructions,
+    String? type,
   }) => Address(
         name: name ?? this.name,
         mobile: mobile ?? this.mobile,
+        altMobile: altMobile ?? this.altMobile,
+        email: email ?? this.email,
         pincode: pincode ?? this.pincode,
         city: city ?? this.city,
         state: state ?? this.state,
@@ -49,11 +66,16 @@ class Address {
         lat: lat ?? this.lat,
         lng: lng ?? this.lng,
         addressLine: addressLine ?? this.addressLine,
+        addressLine2: addressLine2 ?? this.addressLine2,
+        instructions: instructions ?? this.instructions,
+        type: type ?? this.type,
       );
 
   Map<String, dynamic> toJson() => {
         'name': name,
         'mobile': mobile,
+        if (altMobile != null && altMobile!.isNotEmpty) 'altMobile': altMobile,
+        if (email != null && email!.isNotEmpty) 'email': email,
         'pincode': pincode,
         'city': city,
         'state': state,
@@ -62,11 +84,16 @@ class Address {
         'lat': lat,
         'lng': lng,
         'addressLine': addressLine,
+        if (addressLine2 != null && addressLine2!.isNotEmpty) 'addressLine2': addressLine2,
+        if (instructions != null && instructions!.isNotEmpty) 'instructions': instructions,
+        if (type != null && type!.isNotEmpty) 'type': type,
       };
 
   factory Address.fromJson(Map<String, dynamic> m) => Address(
         name: (m['name'] ?? '').toString(),
         mobile: (m['mobile'] ?? '').toString(),
+        altMobile: (m['altMobile'] ?? '').toString().isEmpty ? null : (m['altMobile'] ?? '').toString(),
+        email: (m['email'] ?? '').toString().isEmpty ? null : (m['email'] ?? '').toString(),
         pincode: (m['pincode'] ?? '').toString(),
         city: (m['city'] ?? '').toString(),
         state: (m['state'] ?? '').toString(),
@@ -75,12 +102,17 @@ class Address {
         lat: _asDoubleOrNull(m['lat']),
         lng: _asDoubleOrNull(m['lng']),
         addressLine: (m['addressLine'] ?? '').toString().isEmpty ? null : (m['addressLine'] ?? '').toString(),
+        addressLine2: (m['addressLine2'] ?? '').toString().isEmpty ? null : (m['addressLine2'] ?? '').toString(),
+        instructions: (m['instructions'] ?? '').toString().isEmpty ? null : (m['instructions'] ?? '').toString(),
+        type: (m['type'] ?? '').toString().isEmpty ? null : (m['type'] ?? '').toString(),
       );
 
   @override
   String toString() {
     if ((addressLine ?? '').trim().isNotEmpty) {
-      return '$name, $mobile\n$addressLine\n$city, $state - $pincode';
+      final line2 = (addressLine2 ?? '').trim();
+      final addr = line2.isNotEmpty ? '$addressLine\n$line2' : '$addressLine';
+      return '$name, $mobile\n$addr\n$city, $state - $pincode';
     }
     return '$name, $mobile\n$landmark\n$city, $state - $pincode';
   }
@@ -133,7 +165,11 @@ class AddressService {
     }
     list.add(a);
     addresses.value = list;
-    if (a.isDefault) selected.value = a; else selected.value ??= a;
+    if (a.isDefault) {
+      selected.value = a;
+    } else {
+      selected.value ??= a;
+    }
     await _persist();
   }
 

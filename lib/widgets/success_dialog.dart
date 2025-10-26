@@ -39,7 +39,7 @@ Future<void> showSuccessDialog(
                         width: 68,
                         height: 68,
                         decoration: const BoxDecoration(
-                          color: AppColors.primary,
+                          color: AppColors.greenPrimary,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.check, color: Colors.white, size: 38),

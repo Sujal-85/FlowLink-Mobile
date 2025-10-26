@@ -1,29 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flowlink_mobile/ui/app_theme.dart';
-import 'package:flowlink_mobile/ui/language_intro_screen.dart';
+import 'package:flowlink_mobile/services/auth_service.dart';
+import 'package:flowlink_mobile/ui/personal_details_screen.dart';
 import 'package:flowlink_mobile/widgets/slide_fade_route.dart';
-import 'package:flowlink_mobile/widgets/success_dialog.dart';
 
 class OTPScreen extends StatefulWidget {
-  final String email;
-  const OTPScreen({super.key, required this.email});
+  final String verificationId;
+  final String phoneNumber;
+  final int? resendToken;
+  const OTPScreen({super.key, required this.verificationId, required this.phoneNumber, this.resendToken});
 
   @override
   State<OTPScreen> createState() => _OTPScreenState();
 }
 
 class _OTPScreenState extends State<OTPScreen> {
-  final _controllers = List.generate(4, (index) => TextEditingController());
-  final _nodes = List.generate(4, (index) => FocusNode());
+  final _controllers = List.generate(6, (index) => TextEditingController());
+  final _nodes = List.generate(6, (index) => FocusNode());
+  late String _verificationId;
+  int? _resendToken;
 
   @override
   void dispose() {
-    for (final c in _controllers) c.dispose();
-    for (final n in _nodes) n.dispose();
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final n in _nodes) {
+      n.dispose();
+    }
     super.dispose();
   }
 
   String get _code => _controllers.map((e) => e.text).join();
+
+  @override
+  void initState() {
+    super.initState();
+    _verificationId = widget.verificationId;
+    _resendToken = widget.resendToken;
+  }
 
   void _onChanged(int index, String value) {
     if (value.length > 1) {
@@ -38,19 +53,21 @@ class _OTPScreenState extends State<OTPScreen> {
   }
 
   Future<void> _continue() async {
-    if (_code.length == 4) {
-      await showSuccessDialog(
-        context,
-        title: 'You have logged in\nsuccessfully',
-        message: 'Lorem Ipsum is simply dummy text of the printing and typesetting industry.',
-        buttonText: 'Continue',
-        onContinue: () {
-          pushSlideFade(context, const LanguageIntroScreen());
-        },
-      );
+    if (_code.length == 6) {
+      try {
+        await AuthService.instance.signInWithSmsCode(verificationId: _verificationId, smsCode: _code);
+        if (!mounted) return;
+        // After phone sign-in, collect personal details first
+        pushSlideFade(context, const PersonalDetailsScreen(), withLoader: true, loadingMessage: 'Signing you in...');
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the 4-digit code')),
+        const SnackBar(content: Text('Please enter the 6-digit code')),
       );
     }
   }
@@ -73,11 +90,11 @@ class _OTPScreenState extends State<OTPScreen> {
                     child: Container(
                       width: 40,
                       height: 40,
-                      decoration: const BoxDecoration(
-                        color: AppColors.lightGrey,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : AppColors.lightGrey,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new, size: 18),
+                      child: Icon(Icons.arrow_back_ios_new, size: 18, color: Theme.of(context).colorScheme.onSurface),
                     ),
                   ),
                 ],
@@ -90,23 +107,27 @@ class _OTPScreenState extends State<OTPScreen> {
               const SizedBox(height: 8),
               Text.rich(
                 TextSpan(
-                  text: 'We have just sent you 4 digit code via your\nemail ',
-                  style: const TextStyle(color: AppColors.textGrey),
+                  text: 'We have sent a 6 digit code via SMS to\n',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   children: [
                     TextSpan(
-                      text: widget.email,
-                      style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+                      text: widget.phoneNumber,
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(4, (i) => _OtpBox(
-                      controller: _controllers[i],
-                      node: _nodes[i],
-                      onChanged: (v) => _onChanged(i, v),
+                children: List.generate(6, (i) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: _OtpBox(
+                          controller: _controllers[i],
+                          node: _nodes[i],
+                          onChanged: (v) => _onChanged(i, v),
+                        ),
+                      ),
                     )),
               ),
               const SizedBox(height: 24),
@@ -121,14 +142,34 @@ class _OTPScreenState extends State<OTPScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Didn't receive code? ", style: TextStyle(color: AppColors.textGrey)),
+                  Text("Didn't receive code? ", style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
                   GestureDetector(
-                    onTap: () => ScaffoldMessenger.of(context)
-                        .showSnackBar(const SnackBar(content: Text('Resend Code tapped'))),
-                    child: const Text(
-                      'Resend Code',
-                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
-                    ),
+                    onTap: () async {
+                      try {
+                        await AuthService.instance.startPhoneVerification(
+                          phoneNumber: widget.phoneNumber,
+                          forceResendingToken: _resendToken,
+                          onCodeSent: (id, token) {
+                            setState(() {
+                              _verificationId = id;
+                              _resendToken = token;
+                            });
+                          },
+                          onError: (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.message ?? 'Failed to resend code')),
+                            );
+                          },
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                        );
+                      }
+                    },
+                    child: const Text('Resend Code', style: TextStyle(color: AppColors.greenPrimary, fontWeight: FontWeight.w600)),
                   ),
                 ],
               )
@@ -148,9 +189,8 @@ class _OtpBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 64,
-      child: TextField(
+    final theme = Theme.of(context);
+    return TextField(
         controller: controller,
         focusNode: node,
         textAlign: TextAlign.center,
@@ -160,23 +200,22 @@ class _OtpBox extends StatelessWidget {
         decoration: InputDecoration(
           counterText: '',
           filled: true,
-          fillColor: Colors.white,
+          fillColor: theme.cardColor,
           contentPadding: const EdgeInsets.symmetric(vertical: 18),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+            borderSide: BorderSide(color: theme.dividerColor),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+            borderSide: BorderSide(color: theme.dividerColor),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+            borderSide: BorderSide(color: theme.colorScheme.primary),
           ),
         ),
         onChanged: onChanged,
-      ),
-    );
+      );
   }
 }

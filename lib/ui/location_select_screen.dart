@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flowlink_mobile/ui/app_theme.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flowlink_mobile/services/location_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class LocationSelectScreen extends StatefulWidget {
   const LocationSelectScreen({super.key});
@@ -33,9 +34,20 @@ class _LocationSelectScreenState extends State<LocationSelectScreen> {
       });
       await _resolvePickedAddress();
     } catch (_) {
-      // Fallback to a default coordinate if permissions denied (San Francisco)
+      // Fallback: try last known position, else default to Thane, Maharashtra, India
+      try {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last != null) {
+          setState(() {
+            _picked = LatLng(last.latitude, last.longitude);
+            _loading = false;
+          });
+          await _resolvePickedAddress();
+          return;
+        }
+      } catch (_) {}
       setState(() {
-        _picked = const LatLng(37.7749, -122.4194);
+        _picked = const LatLng(19.2183, 72.9781); // Thane, Maharashtra
         _loading = false;
       });
       await _resolvePickedAddress();
@@ -136,101 +148,45 @@ class _LocationSelectScreenState extends State<LocationSelectScreen> {
               ),
             ),
           ),
-          // Bottom panel
-          Positioned(
-            top: mapHeight - 18,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
-                ),
-                boxShadow: [
-                  BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, -2)),
-                ],
-              ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 44,
-                        height: 5,
+                    if ((_pickedAddress ?? '').isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE5E7EB),
-                          borderRadius: BorderRadius.circular(100),
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: Theme.of(context).brightness == Brightness.light
+                              ? const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))]
+                              : null,
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    // Scrollable content area so the list/card is always visible
-                    Expanded(
-                      child: ListView(
-                        padding: EdgeInsets.zero,
-                        physics: const BouncingScrollPhysics(),
-                        children: [
-                          const Text('Selected Location', style: TextStyle(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 8),
-                          GestureDetector(
-                            onTap: _confirm,
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF3F4F6),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFE5E7EB)),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(Icons.place_rounded, color: AppColors.primary),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _resolvingAddress
-                                              ? 'Fetching address...'
-                                              : (_pickedAddress ?? 'Tap on map to pick a location'),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 14, color: Colors.black87),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const Icon(Icons.chevron_right_rounded, color: Colors.black45),
-                                ],
+                        child: Row(
+                          children: [
+                            Icon(Icons.place_rounded, color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _resolvingAddress ? 'Fetching address...' : _pickedAddress!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text('Popular Locations', style: TextStyle(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 8),
-                          const _LocationTile(title: 'Ratnagiri', subtitle: 'Maharashtra, India', distance: '3.2 KM'),
-                          const _LocationTile(title: 'Mirjole', subtitle: 'Ratnagiri, Maharashtra', distance: '5.6 KM'),
-                          const _LocationTile(title: 'Nachane', subtitle: 'Ratnagiri, Maharashtra', distance: '8.1 KM'),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
                         onPressed: _confirm,
-                        child: const Text('Confirm Location', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                        child: const Text('Confirm Location'),
                       ),
                     ),
                   ],
@@ -252,26 +208,31 @@ Widget _mapPin() {
       color: Colors.white,
       shape: BoxShape.circle,
       boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
-      border: Border.all(color: AppColors.primary, width: 3),
+      border: Border.all(color: AppColors.greenPrimary, width: 3),
     ),
   );
 }
 
 Widget _circleIcon({required IconData icon, VoidCallback? onTap}) {
-  return InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(24),
-    child: Container(
-      width: 40,
-      height: 40,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+  return Builder(builder: (context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          shape: BoxShape.circle,
+          boxShadow: theme.brightness == Brightness.light
+              ? const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))]
+              : null,
+        ),
+        child: Icon(icon, color: theme.colorScheme.onSurface, size: 20),
       ),
-      child: Icon(icon, color: Colors.black87, size: 20),
-    ),
-  );
+    );
+  });
 }
 
 class _LocationTile extends StatelessWidget {
@@ -284,10 +245,10 @@ class _LocationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 2),
-      leading: const Icon(Icons.location_on, color: AppColors.primary),
+      leading: Icon(Icons.location_on, color: Theme.of(context).colorScheme.primary),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(subtitle, overflow: TextOverflow.ellipsis, maxLines: 1),
-      trailing: Text(distance, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+      trailing: Text(distance, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
       onTap: () {
         // For now, just close if used anywhere.
         Navigator.of(context).pop();

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 
 class LocationService {
   static final ValueNotifier<String> addressNotifier = ValueNotifier<String>('');
@@ -52,15 +54,17 @@ class LocationService {
           }
         }
       } catch (_) {
-        // fallthrough to lat/long fallback
+        // fallthrough to web API fallback
       }
-      return 'California, USA';
+      final viaOsm = await _reverseViaOsm(pos.latitude, pos.longitude);
+      if (viaOsm != null && viaOsm.isNotEmpty) return viaOsm;
+      return 'Lat: ${pos.latitude.toStringAsFixed(4)}, Lng: ${pos.longitude.toStringAsFixed(4)}';
     } on LocationPermissionException {
-      return 'California, USA';
+      return 'Select delivery location';
     } on LocationServiceException {
-      return 'California, USA';
+      return 'Select delivery location';
     } catch (_) {
-      return 'California, USA';
+      return 'Select delivery location';
     }
   }
 
@@ -89,11 +93,14 @@ class LocationService {
           if ((p.administrativeArea ?? '').trim().isNotEmpty) p.administrativeArea,
           if ((p.country ?? '').trim().isNotEmpty) p.country,
         ].whereType<String>().toList();
-        addressNotifier.value = parts.isNotEmpty ? parts.join(', ') : 'California, USA';
+        addressNotifier.value = parts.isNotEmpty ? parts.join(', ') : 'Lat: ${lat.toStringAsFixed(4)}, Lng: ${lng.toStringAsFixed(4)}';
         return;
       }
     } catch (_) {}
-    addressNotifier.value = 'California, USA';
+    final viaOsm = await _reverseViaOsm(lat, lng);
+    addressNotifier.value = (viaOsm != null && viaOsm.isNotEmpty)
+        ? viaOsm
+        : 'Lat: ${lat.toStringAsFixed(4)}, Lng: ${lng.toStringAsFixed(4)}';
   }
 
   /// Reverse geocode coordinates to a human-readable address, without
@@ -112,7 +119,32 @@ class LocationService {
         if (parts.isNotEmpty) return parts.join(', ');
       }
     } catch (_) {}
-    return 'California, USA';
+    final viaOsm = await _reverseViaOsm(lat, lng);
+    if (viaOsm != null && viaOsm.isNotEmpty) return viaOsm;
+    return 'Lat: ${lat.toStringAsFixed(4)}, Lng: ${lng.toStringAsFixed(4)}';
+  }
+
+  // OpenStreetMap Nominatim fallback for web / geocoding failures
+  static Future<String?> _reverseViaOsm(double lat, double lng) async {
+    try {
+      final url = Uri.parse('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=$lat&lon=$lng');
+      final res = await http.get(url, headers: {
+        'User-Agent': 'FlowLink/1.0 (reverse-geocode)'
+      }).timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final disp = (data['display_name'] ?? '').toString();
+        if (disp.isNotEmpty) return disp;
+        final addr = (data['address'] as Map?)?.cast<String, dynamic>();
+        if (addr != null) {
+          final parts = [
+            addr['road'], addr['suburb'], addr['city'], addr['state'], addr['country']
+          ].whereType<String>().where((s) => s.trim().isNotEmpty).toList();
+          if (parts.isNotEmpty) return parts.join(', ');
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 }
 

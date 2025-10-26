@@ -6,6 +6,9 @@ import 'package:flowlink_mobile/services/orders_service.dart';
 import 'package:flowlink_mobile/ui/app_theme.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:flowlink_mobile/ui/assistant_bottom_sheet.dart';
+import 'package:flowlink_mobile/services/invoice_service.dart';
+import 'package:flowlink_mobile/services/address_service.dart';
+import 'package:flowlink_mobile/utils/pdf_share.dart';
 
 class ShippingDetailScreen extends StatefulWidget {
   const ShippingDetailScreen({super.key, required this.order});
@@ -53,6 +56,7 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
       appBar: AppBar(title: const Text('Shipping Status')),
       body: ListView(
         children: [
+          _trackingBanner(),
           _productOverview(o, status, eta),
           const SizedBox(height: 8),
           _timeline(o.stageIndex),
@@ -65,11 +69,44 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
     );
   }
 
+  Widget _trackingBanner() {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      height: 150,
+      decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))]),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              'https://www.securetrack.ae/wp-content/uploads/2024/01/gps.webp',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade200),
+            ),
+            Align(
+              alignment: Alignment.bottomLeft,
+              child: Container(
+                margin: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.55), borderRadius: BorderRadius.circular(10)),
+                child: const Text('Live shipment tracking', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _productOverview(OrderItem o, String status, String eta) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))]),
       child: Row(
         children: [
           ClipRRect(
@@ -87,12 +124,12 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(o.productName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              Text(o.id, style: const TextStyle(color: Colors.black54)),
+              Text(o.id, style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)),
               const SizedBox(height: 8),
               Row(children: [
                 _statusBadge(status),
                 const SizedBox(width: 8),
-                Text('ETA: $eta', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+                Text('ETA: $eta', style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w600)),
                 const Spacer(),
                 Text('₹${o.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900)),
               ]),
@@ -105,10 +142,12 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
 
   Widget _timeline(int stageIndex) {
     final stages = OrderStatus.stages;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))]),
       child: Column(
         children: List.generate(stages.length, (i) {
           final active = i <= stageIndex;
@@ -123,19 +162,19 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: active ? AppColors.primaryGradient : null,
-                      color: active ? null : Colors.grey.shade300,
+                      color: active ? null : (isDark ? Colors.white24 : Colors.grey.shade300),
                     ),
                   ),
                   if (i != stages.length - 1)
-                    Container(width: 2, height: 28, color: active ? Colors.teal : Colors.grey.shade300),
+                    Container(width: 2, height: 28, color: active ? theme.colorScheme.primary : (isDark ? Colors.white24 : Colors.grey.shade300)),
                 ],
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(stages[i], style: TextStyle(fontWeight: FontWeight.w800, color: active ? Colors.black87 : Colors.black54)),
+                  Text(stages[i], style: TextStyle(fontWeight: FontWeight.w800, color: active ? theme.colorScheme.onSurface : (isDark ? Colors.white70 : Colors.black54))),
                   const SizedBox(height: 4),
-                  Text('Updated ${DateTime.now().subtract(Duration(hours: (stages.length - i) * 3)).hour}:00', style: const TextStyle(color: Colors.black54)),
+                  Text('Updated ${DateTime.now().subtract(Duration(hours: (stages.length - i) * 3)).hour}:00', style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)),
                 ]),
               ),
             ],
@@ -153,10 +192,13 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
       Marker(markerId: const MarkerId('user'), position: dest, infoWindow: const InfoWindow(title: 'Destination')),
       Marker(markerId: const MarkerId('vehicle'), position: _vehicle, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), infoWindow: const InfoWindow(title: 'Courier')),
     };
+    final polylines = <Polyline>{
+      Polyline(polylineId: const PolylineId('route'), color: Theme.of(context).colorScheme.onSurface, width: 4, points: [origin, _vehicle, dest]),
+    };
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       height: 220,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))]),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Stack(
@@ -167,6 +209,7 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
               myLocationButtonEnabled: false,
               zoomControlsEnabled: false,
               markers: markers,
+              polylines: polylines,
               onMapCreated: (c) => _controller.complete(c),
             ),
             Positioned(
@@ -185,22 +228,39 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
   }
 
   Widget _extraInfo(OrderItem o) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: const [CircleAvatar(backgroundColor: Colors.black12, child: Icon(Icons.person, color: Colors.black54)), SizedBox(width: 10), Text('Ravi Kumar • Courier')]),
-          const SizedBox(height: 8),
           Row(children: [
-            OutlinedButton.icon(onPressed: () => launchUrlString('tel:+910000000000'), icon: const Icon(Icons.call), label: const Text('Call')),
-            const SizedBox(width: 8),
-            OutlinedButton.icon(onPressed: () => launchUrlString('sms:+910000000000'), icon: const Icon(Icons.sms), label: const Text('Message')),
-            const Spacer(),
-            OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.file_download_outlined), label: const Text('Invoice')),
+            CircleAvatar(backgroundColor: isDark ? Colors.white12 : Colors.black12, child: Icon(Icons.person, color: theme.colorScheme.onSurface.withOpacity(0.7))),
+            const SizedBox(width: 10),
+            Expanded(child: Text('Ravi Kumar • Courier', overflow: TextOverflow.ellipsis)),
           ]),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(onPressed: () => launchUrlString('tel:+910000000000'), icon: const Icon(Icons.call), label: const Text('Call')),
+              OutlinedButton.icon(onPressed: () => launchUrlString('sms:+910000000000'), icon: const Icon(Icons.sms), label: const Text('Message')),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final o = widget.order;
+                  final addr = AddressService.instance.selected.value;
+                  final data = await InvoiceService.generateForOrder(o, addr);
+                  await shareOrDownloadPdf(data, 'invoice_${o.id}.pdf');
+                },
+                icon: const Icon(Icons.file_download_outlined),
+                label: const Text('Invoice'),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -232,25 +292,26 @@ class _ShippingDetailScreenState extends State<ShippingDetailScreen> {
   }
 
   Widget _statusBadge(String status) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Color bg;
     Color fg;
     switch (status) {
       case 'Delivered':
-        bg = Colors.green.shade50;
-        fg = Colors.green.shade700;
+        bg = isDark ? Colors.green.withOpacity(0.15) : Colors.green.shade50;
+        fg = isDark ? Colors.green.shade300 : Colors.green.shade700;
         break;
       case 'Shipped':
       case 'Out for Delivery':
-        bg = Colors.blue.shade50;
-        fg = Colors.blue.shade700;
+        bg = isDark ? Colors.blue.withOpacity(0.15) : Colors.blue.shade50;
+        fg = isDark ? Colors.blue.shade300 : Colors.blue.shade700;
         break;
       case 'Packed':
-        bg = Colors.orange.shade50;
-        fg = Colors.orange.shade700;
+        bg = isDark ? Colors.orange.withOpacity(0.18) : Colors.orange.shade50;
+        fg = isDark ? Colors.orange.shade300 : Colors.orange.shade700;
         break;
       default:
-        bg = Colors.grey.shade200;
-        fg = Colors.black87;
+        bg = isDark ? Colors.white12 : Colors.grey.shade200;
+        fg = isDark ? Colors.white : Colors.black87;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

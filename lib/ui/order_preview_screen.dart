@@ -14,14 +14,15 @@ class OrderPreviewScreen extends StatefulWidget {
 }
 
 class _OrderPreviewScreenState extends State<OrderPreviewScreen> {
-  static const double deliveryCharge = 49;
+  static const double deliveryBaseCharge = 49;
 
   @override
   Widget build(BuildContext context) {
     final p = widget.product;
     final unit = (p.discountPrice > 0 && p.discountPrice < p.price) ? p.discountPrice : p.price;
     final subtotal = unit * widget.qty;
-    final total = subtotal + deliveryCharge;
+    final delivery = subtotal >= 150 ? 0.0 : deliveryBaseCharge;
+    final total = subtotal + delivery;
 
     return Scaffold(
       appBar: AppBar(
@@ -38,7 +39,7 @@ class _OrderPreviewScreenState extends State<OrderPreviewScreen> {
                   const SizedBox(height: 16),
                   _addressCard(),
                   const SizedBox(height: 16),
-                  _charges(subtotal: subtotal, total: total),
+                  _charges(subtotal: subtotal, total: total, delivery: delivery),
                 ],
               ),
             ),
@@ -50,10 +51,12 @@ class _OrderPreviewScreenState extends State<OrderPreviewScreen> {
   }
 
   Widget _orderCard(ProductItem p, double unit) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
       ),
@@ -76,13 +79,13 @@ class _OrderPreviewScreenState extends State<OrderPreviewScreen> {
               children: [
                 Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
-                Text(p.quantity, style: const TextStyle(color: Colors.black54)),
+                Text(p.quantity, style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(999)),
+                      decoration: BoxDecoration(color: isDark ? theme.inputDecorationTheme.fillColor : Colors.grey.shade100, borderRadius: BorderRadius.circular(999)),
                       child: Text('Qty: ${widget.qty}', style: const TextStyle(fontWeight: FontWeight.w700)),
                     ),
                     const Spacer(),
@@ -101,10 +104,12 @@ class _OrderPreviewScreenState extends State<OrderPreviewScreen> {
     return ValueListenableBuilder<Address?>(
       valueListenable: AddressService.instance.selected,
       builder: (context, sel, _) {
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.cardColor,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
           ),
@@ -120,7 +125,7 @@ class _OrderPreviewScreenState extends State<OrderPreviewScreen> {
                     const Text('Delivery Address', style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 6),
                     if (sel == null)
-                      const Text('No address selected. Add one to continue.', style: TextStyle(color: Colors.black54))
+                      Text('No address selected. Add one to continue.', style: TextStyle(color: isDark ? Colors.white70 : Colors.black54))
                     else
                       Text(sel.toString()),
                   ],
@@ -138,12 +143,13 @@ class _OrderPreviewScreenState extends State<OrderPreviewScreen> {
     );
   }
 
-  Widget _charges({required double subtotal, required double total}) {
+  Widget _charges({required double subtotal, required double total, required double delivery}) {
     final estimate = DateTime.now().add(const Duration(days: 2));
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
       ),
@@ -153,7 +159,7 @@ class _OrderPreviewScreenState extends State<OrderPreviewScreen> {
           const Text('Summary', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           _row('Items total', '₹${subtotal.toStringAsFixed(0)}'),
-          _row('Delivery charge', '₹${_format(deliveryCharge)}'),
+          _row('Delivery charge', delivery <= 0 ? 'Free' : '₹${_format(delivery)}'),
           _row('Est. delivery date', '${estimate.day}/${estimate.month}/${estimate.year}'),
           const Divider(height: 16),
           Row(
@@ -173,7 +179,7 @@ class _OrderPreviewScreenState extends State<OrderPreviewScreen> {
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(color: Colors.black87)),
+          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           const Spacer(),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
         ],
@@ -182,9 +188,10 @@ class _OrderPreviewScreenState extends State<OrderPreviewScreen> {
   }
 
   Widget _bottomBar({required double total}) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      decoration: const BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, -2))]),
+      decoration: BoxDecoration(color: theme.cardColor, boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, -2))]),
       child: Row(
         children: [
           Expanded(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flowlink_mobile/services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -9,6 +10,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _email = TextEditingController();
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -30,8 +32,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           SizedBox(
             height: 48,
             child: ElevatedButton(
-              onPressed: _send,
-              child: const Text('Send Reset Link'),
+              onPressed: _loading ? null : _send,
+              child: _loading
+                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Send Reset Link'),
             ),
           ),
         ],
@@ -39,8 +43,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  void _send() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reset link sent (stub)')));
-    Navigator.pop(context);
+  Future<void> _send() async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter your email')));
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await AuthService.instance.sendPasswordResetEmail(email: email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reset link sent to your email')));
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }

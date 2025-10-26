@@ -1,29 +1,40 @@
 import 'package:flutter/material.dart';
-  import 'package:flowlink_mobile/ui/app_theme.dart';
-  import 'package:flowlink_mobile/ui/home_screen.dart';
-  import 'package:flowlink_mobile/ui/splash_screen.dart';
-  import 'package:flowlink_mobile/ui/onboarding_screen.dart';
-  import 'package:flowlink_mobile/ui/onboarding_screen2.dart';
-  import 'package:flowlink_mobile/ui/onboarding_screen3.dart';
-  import 'package:flowlink_mobile/ui/login_screen.dart';
-  import 'package:flowlink_mobile/ui/signup_screen.dart';
-  import 'package:flowlink_mobile/ui/location_select_screen.dart';
-  import 'package:flowlink_mobile/ui/location_intro_screen.dart';
-  import 'package:flowlink_mobile/services/cart_service.dart';
-  import 'package:flowlink_mobile/services/purchase_history_service.dart';
-  import 'package:flowlink_mobile/services/theme_service.dart';
-  import 'package:flowlink_mobile/services/address_service.dart';
-  import 'package:flowlink_mobile/services/orders_service.dart';
-  import 'package:flowlink_mobile/ui/orders_list_screen.dart';
-  import 'package:flowlink_mobile/services/favorites_service.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flowlink_mobile/ui/app_theme.dart';
+import 'package:flowlink_mobile/ui/main_tabs_screen.dart';
+import 'package:flowlink_mobile/ui/splash_screen.dart';
+import 'package:flowlink_mobile/ui/onboarding_screen.dart';
+import 'package:flowlink_mobile/ui/onboarding_screen2.dart';
+import 'package:flowlink_mobile/ui/onboarding_screen3.dart';
+import 'package:flowlink_mobile/ui/login_screen.dart';
+import 'package:flowlink_mobile/ui/signup_screen.dart';
+import 'package:flowlink_mobile/ui/welcome_screen.dart';
+import 'package:flowlink_mobile/ui/congratulations_screen.dart';
+import 'package:flowlink_mobile/ui/location_select_screen.dart';
+import 'package:flowlink_mobile/ui/location_intro_screen.dart';
+import 'package:flowlink_mobile/ui/phone_input_screen.dart';
+import 'package:flowlink_mobile/ui/personal_details_screen.dart';
+import 'package:flowlink_mobile/services/cart_service.dart';
+import 'package:flowlink_mobile/services/purchase_history_service.dart';
+import 'package:flowlink_mobile/services/theme_service.dart';
+import 'package:flowlink_mobile/services/orders_service.dart';
+import 'package:flowlink_mobile/ui/orders_list_screen.dart';
+import 'package:flowlink_mobile/services/favorites_service.dart';
+import 'package:flowlink_mobile/services/auth_service.dart';
+import 'package:flowlink_mobile/widgets/loader_navigator_observer.dart';
+import 'package:flowlink_mobile/services/db_service.dart';
+import 'package:flowlink_mobile/services/content_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await CartService.instance.init();
   await PurchaseHistoryService.instance.init();
   await ThemeService.instance.init();
+  await DbService.instance.init();
+  await ContentService.instance.init();
   await OrdersService.instance.init();
   await FavoritesService.instance.init();
+  await AuthService.instance.init();
   runApp(const MyApp());
 }
 
@@ -41,26 +52,38 @@ class MyApp extends StatelessWidget {
           theme: buildTheme(),
           darkTheme: buildDarkTheme(),
           themeMode: mode,
+          scrollBehavior: const MaterialScrollBehavior().copyWith(
+            dragDevices: {
+              PointerDeviceKind.touch,
+              PointerDeviceKind.mouse,
+              PointerDeviceKind.stylus,
+            },
+          ),
+          navigatorObservers: [LoaderNavigatorObserver()],
           builder: (context, child) {
             final mq = MediaQuery.of(context);
             final scale = (mq.size.width / 375.0).clamp(0.9, 1.15);
-            return MediaQuery(
-              data: mq.copyWith(textScaleFactor: scale),
+            final themedChild = MediaQuery(
+              data: mq.copyWith(textScaler: TextScaler.linear(scale)),
               child: child ?? const SizedBox.shrink(),
             );
+            return themedChild;
           },
-          home: const SplashScreen(),
+          home: const MainTabsScreen(),
           routes: {
-            '/home': (_) => HomeScreen(),
+            '/home': (_) => const MainTabsScreen(),
             '/orders': (_) => const OrdersListScreen(),
             '/login': (_) => LoginScreen(),
             '/signup': (_) => SignupScreen(),
+            '/welcome': (_) => const WelcomeScreen(),
+            '/congrats': (_) => const CongratulationsScreen(),
+            '/phone': (_) => const PhoneInputScreen(),
             '/onboarding': (_) => OnboardingScreen(),
             '/onboarding2': (_) => OnboardingScreen2(),
             '/onboarding3': (_) => OnboardingScreen3(),
             '/splash': (_) => SplashScreen(),
-            // New pre-screen for choosing location
             '/select-location': (_) => const LocationIntroScreen(),
+            '/personal-details': (_) => const PersonalDetailsScreen(),
             // Existing map picker moved under a dedicated route
             '/select-location/map': (_) => const LocationSelectScreen(),
           },

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flowlink_mobile/services/auth_service.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -11,6 +12,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _old = TextEditingController();
   final _new = TextEditingController();
   final _confirm = TextEditingController();
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -36,8 +38,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           SizedBox(
             height: 48,
             child: ElevatedButton(
-              onPressed: _change,
-              child: const Text('Update Password'),
+              onPressed: _loading ? null : _change,
+              child: _loading
+                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Update Password'),
             ),
           ),
         ],
@@ -45,12 +49,26 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     );
   }
 
-  void _change() {
-    if (_new.text.trim().isEmpty || _new.text != _confirm.text) {
+  Future<void> _change() async {
+    final oldPwd = _old.text.trim();
+    final newPwd = _new.text.trim();
+    if (newPwd.isEmpty || newPwd != _confirm.text.trim()) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated')));
-    Navigator.pop(context);
+    setState(() => _loading = true);
+    try {
+      await AuthService.instance.updatePassword(currentPassword: oldPwd, newPassword: newPwd);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated')));
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }

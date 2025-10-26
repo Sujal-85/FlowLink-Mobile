@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "789325270587",
+    "project_id": "flowlink-24f55",
+    "storage_bucket": "flowlink-24f55.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:789325270587:android:8e1a1ffda322643096961e",
+        "android_client_info": {
+          "package_name": "com.flowlink.flowlink"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "789325270587-ii9s3qq38m6s3nagd6i8tbprbjuvf1hq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.flowlink.flowlink",
+            "certificate_hash": "05d2fd022241116c1a9e4056f4e72876955a17a9"
+          }
+        },
+        {
+          "client_id": "789325270587-aco072j005jkt9p8879lklfervc7v828.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAvcnK2lTadJmmU_Io1onY2j0Y5jFnuwE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "789325270587-aco072j005jkt9p8879lklfervc7v828.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
